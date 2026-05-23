@@ -58,6 +58,7 @@ def calendar_item(item: ScheduleItem, index: int) -> dict:
         "primaryDate": primary_date(item),
         "sellerOrVenue": item.seller_or_venue,
         "sourceUrl": item.source_url,
+        "imageUrl": item.image_url,
         "sourceName": item.source_name,
         "confidence": round(item.confidence, 2),
         "reviewReason": item.review_reason,
@@ -408,7 +409,34 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool) -> st
       background: transparent;
       cursor: pointer;
     }}
+    .agenda-item.has-image {{
+      display: grid;
+      grid-template-columns: 82px minmax(0, 1fr);
+      gap: 12px;
+      align-items: start;
+    }}
     .agenda-item:last-child {{ border-bottom: 0; }}
+    .event-image {{
+      display: block;
+      overflow: hidden;
+      border-radius: 8px;
+      background: #fff0bf;
+      border: 1px solid rgba(122, 75, 39, .12);
+      box-shadow: 0 8px 18px rgba(122, 75, 39, .08);
+    }}
+    .event-image img {{
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }}
+    .agenda-thumb {{
+      width: 82px;
+      aspect-ratio: 1;
+    }}
+    .agenda-content {{
+      min-width: 0;
+    }}
     .agenda-item h3 {{
       margin: 0;
       font-size: 15px;
@@ -563,6 +591,20 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool) -> st
       color: var(--cocoa);
       text-align: left;
     }}
+    .mobile-event.has-image {{
+      display: grid;
+      grid-template-columns: 74px minmax(0, 1fr);
+      gap: 10px;
+      align-items: center;
+      padding: 8px 10px;
+    }}
+    .mobile-thumb {{
+      width: 74px;
+      aspect-ratio: 1;
+    }}
+    .mobile-event-content {{
+      min-width: 0;
+    }}
     .mobile-event.product {{ border-left-color: var(--caramel); background: #fff0bf; }}
     .mobile-event.event {{ border-left-color: var(--sky); background: #eaf5ff; }}
     .mobile-event.campaign {{ border-left-color: var(--berry); background: #ffeaf0; }}
@@ -589,6 +631,11 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool) -> st
     }}
     dialog::backdrop {{ background: rgba(53, 36, 23, .34); }}
     .modal-body {{ padding: 18px; }}
+    .modal-image {{
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      margin-bottom: 14px;
+    }}
     .modal-body h2 {{ margin: 0 0 10px; font-size: 22px; letter-spacing: 0; }}
     .modal-actions {{
       display: flex;
@@ -919,7 +966,14 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool) -> st
     function mobileEventButton(item) {{
       const button = document.createElement("button");
       button.className = `mobile-event ${{item.kind}}`;
-      button.innerHTML = `<strong>${{escapeHtml(item.title)}}</strong><span>${{escapeHtml(dateSummary(item))}} / ${{escapeHtml(item.kindLabel)}}</span>`;
+      if (item.imageUrl) button.classList.add("has-image");
+      button.innerHTML = `
+        ${{imageMarkup(item, "event-image mobile-thumb")}}
+        <div class="mobile-event-content">
+          <strong>${{escapeHtml(item.title)}}</strong>
+          <span>${{escapeHtml(dateSummary(item))}} / ${{escapeHtml(item.kindLabel)}}</span>
+        </div>
+      `;
       button.addEventListener("click", () => openDetail(item));
       return button;
     }}
@@ -931,20 +985,24 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool) -> st
     }}
     function agendaItem(item) {{
       const el = document.createElement("article");
-      el.className = "agenda-item";
+      el.className = item.imageUrl ? "agenda-item has-image" : "agenda-item";
       el.innerHTML = `
-        <h3>${{escapeHtml(item.title)}}</h3>
-        <div class="meta">
-          <span class="tag">${{escapeHtml(item.kindLabel)}}</span>
+        ${{imageMarkup(item, "event-image agenda-thumb")}}
+        <div class="agenda-content">
+          <h3>${{escapeHtml(item.title)}}</h3>
+          <div class="meta">
+            <span class="tag">${{escapeHtml(item.kindLabel)}}</span>
+          </div>
+          <p class="detail-text">${{escapeHtml(dateSummary(item))}}</p>
+          <p class="detail-text">${{escapeHtml(item.sellerOrVenue || item.sourceName || "")}}</p>
         </div>
-        <p class="detail-text">${{escapeHtml(dateSummary(item))}}</p>
-        <p class="detail-text">${{escapeHtml(item.sellerOrVenue || item.sourceName || "")}}</p>
       `;
       el.addEventListener("click", () => openDetail(item));
       return el;
     }}
     function openDetail(item) {{
       modalBody.innerHTML = `
+        ${{imageMarkup(item, "event-image modal-image")}}
         <h2>${{escapeHtml(item.title)}}</h2>
         <div class="meta">
           <span class="tag">${{escapeHtml(item.kindLabel)}}</span>
@@ -966,6 +1024,19 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool) -> st
     function sourceLinks(value) {{
       if (!value) return "";
       return value.split(" | ").map(url => `<a class="source-link" href="${{escapeAttr(url)}}" target="_blank" rel="noreferrer">ソースを開く</a>`).join("<br>");
+    }}
+    function imageMarkup(item, className) {{
+      const imageUrl = safeImageUrl(item.imageUrl);
+      if (!imageUrl) return "";
+      return `<span class="${{escapeAttr(className)}}"><img src="${{imageUrl}}" alt="${{escapeAttr(item.title)}}" loading="lazy" referrerpolicy="no-referrer"></span>`;
+    }}
+    function safeImageUrl(value) {{
+      try {{
+        const url = new URL(String(value || ""), window.location.href);
+        return ["http:", "https:"].includes(url.protocol) ? escapeAttr(url.href) : "";
+      }} catch {{
+        return "";
+      }}
     }}
     function escapeHtml(value) {{
       return String(value || "").replace(/[&<>"']/g, char => ({{"&":"&amp;","<":"&lt;",">":"&gt;","\\"":"&quot;","'":"&#39;"}}[char]));

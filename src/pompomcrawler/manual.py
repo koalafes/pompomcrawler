@@ -15,6 +15,7 @@ def import_manual_csv(path: Path) -> list[RawDocument]:
             url = (row.get("source_url") or row.get("url") or "").strip()
             source_name = (row.get("source_name") or "manual").strip()
             notes = (row.get("notes") or "").strip()
+            image_url = (row.get("image_url") or "").strip()
             text = "\n".join(
                 value
                 for value in [
@@ -37,7 +38,7 @@ def import_manual_csv(path: Path) -> list[RawDocument]:
                     text=text,
                     fetched_at=now_iso(),
                     notes=notes,
+                    image_url=image_url,
                 )
             )
     return docs
-

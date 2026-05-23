@@ -19,6 +19,7 @@ def test_export_schedule_writes_csv(tmp_path: Path):
         status="needs_review",
         review_reason="sample",
         notes="",
+        image_url="https://example.com/event.jpg",
     )
 
     csv_path, xlsx_path, html_path = export_schedule([item], tmp_path)
@@ -27,4 +28,6 @@ def test_export_schedule_writes_csv(tmp_path: Path):
     assert xlsx_path is None or xlsx_path.exists()
     assert html_path.exists()
     assert "ポムポムプリン イベント" in csv_path.read_text(encoding="utf-8-sig")
-    assert "ポムポムプリン予定帳" in html_path.read_text(encoding="utf-8")
+    html = html_path.read_text(encoding="utf-8")
+    assert "ポムポムプリン予定帳" in html
+    assert "https://example.com/event.jpg" in html

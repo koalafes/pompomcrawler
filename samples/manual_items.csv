@@ -1,3 +1,2 @@
-title,source_url,source_name,notes
-ポムポムプリン 手動投入サンプル,https://example.com/pompompurin-news,手動メモ,SNSや検索で見つけたURLをこの形式で追加
-
+title,source_url,source_name,image_url,notes
+ポムポムプリン 手動投入サンプル,https://example.com/pompompurin-news,手動メモ,https://example.com/pompompurin-news.jpg,SNSや検索で見つけたURLをこの形式で追加
