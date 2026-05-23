@@ -247,7 +247,10 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool) -> st
     }}
     .day:nth-child(7n) {{ border-right: 0; }}
     .day.is-muted {{ background: #f6f3ed; color: #8b8479; }}
-    .day.is-today {{ box-shadow: inset 0 0 0 2px var(--accent); }}
+    .day.is-today {{
+      background: #eef8f6;
+      box-shadow: inset 0 0 0 3px var(--accent);
+    }}
     .day-number {{
       display: flex;
       align-items: center;
@@ -255,6 +258,16 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool) -> st
       margin-bottom: 6px;
       font-weight: 800;
       font-size: 13px;
+    }}
+    .day.is-today .day-number span:first-child {{
+      width: 30px;
+      height: 30px;
+      display: inline-grid;
+      place-items: center;
+      border-radius: 999px;
+      background: var(--accent);
+      color: #fff;
+      box-shadow: 0 4px 12px rgba(15, 118, 110, .24);
     }}
     .day-count {{
       min-width: 22px;
@@ -514,10 +527,7 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool) -> st
     fillFilters();
     render();
 
-    function initialMonth(items) {{
-      const dated = items.map(item => item.primaryDate).filter(Boolean).sort();
-      return dated.length ? parseLocalDate(dated[0]) : startOfMonth(new Date());
-    }}
+    function initialMonth(items) {{ return startOfMonth(new Date()); }}
     function startOfMonth(date) {{ return new Date(date.getFullYear(), date.getMonth(), 1); }}
     function isoDate(date) {{
       const y = date.getFullYear();
