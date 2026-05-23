@@ -14,6 +14,7 @@ SCHEDULE_COLUMNS = [
     "reservation_start",
     "seller_or_venue",
     "source_url",
+    "image_url",
     "source_name",
     "confidence",
     "status",
@@ -36,6 +37,7 @@ class RawDocument:
     text: str
     fetched_at: str
     notes: str = ""
+    image_url: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -49,6 +51,7 @@ class RawDocument:
             text=str(data.get("text", "")),
             fetched_at=str(data.get("fetched_at", "")),
             notes=str(data.get("notes", "")),
+            image_url=str(data.get("image_url", "")),
         )
 
 
@@ -67,6 +70,7 @@ class ScheduleItem:
     status: str
     review_reason: str
     notes: str
+    image_url: str = ""
 
     def __post_init__(self) -> None:
         if self.status not in VALID_STATUSES:
@@ -93,5 +97,5 @@ class ScheduleItem:
             status=str(data.get("status", "needs_review")),
             review_reason=str(data.get("review_reason", "")),
             notes=str(data.get("notes", "")),
+            image_url=str(data.get("image_url", "")),
         )
-

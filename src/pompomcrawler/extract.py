@@ -12,6 +12,8 @@ from typing import Iterable
 from .models import RawDocument, ScheduleItem
 
 
+GLOBAL_ENV_PATH = Path.home() / ".config" / "pompomcrawler" / ".env"
+
 EXTRACTION_SCHEMA = {
     "type": "object",
     "additionalProperties": False,
@@ -73,10 +75,9 @@ def load_dotenv_if_available() -> None:
         from dotenv import load_dotenv
     except ImportError:
         return
-    env_path = Path.cwd() / ".env"
-    if env_path.exists():
-        load_dotenv(dotenv_path=env_path)
-        return
+    for env_path in [Path.cwd() / ".env", GLOBAL_ENV_PATH]:
+        if env_path.exists():
+            load_dotenv(dotenv_path=env_path)
     try:
         load_dotenv()
     except AssertionError:
@@ -141,6 +142,7 @@ class OpenAIExtractor:
             ScheduleItem(
                 source_url=doc.url,
                 source_name=doc.source_name,
+                image_url=doc.image_url,
                 **normalize_openai_item(item, doc),
             )
             for item in payload.get("items", [])
@@ -199,6 +201,7 @@ def heuristic_extract(doc: RawDocument) -> list[ScheduleItem]:
             seller_or_venue="",
             source_url=doc.url,
             source_name=doc.source_name,
+            image_url=doc.image_url,
             confidence=0.45,
             status="needs_review",
             review_reason="OpenAI API was not available; heuristic keyword extraction created this candidate.",
@@ -238,6 +241,7 @@ def fallback_item(doc: RawDocument, reason: str, status: str = "needs_review", c
         seller_or_venue="",
         source_url=doc.url,
         source_name=doc.source_name,
+        image_url=doc.image_url,
         confidence=confidence,
         status=status,
         review_reason=reason,
@@ -270,6 +274,8 @@ def merge_duplicates(items: Iterable[ScheduleItem]) -> list[ScheduleItem]:
         for field in ["start_date", "end_date", "release_date", "reservation_start", "seller_or_venue"]:
             if not getattr(match, field) and getattr(item, field):
                 setattr(match, field, getattr(item, field))
+        if not match.image_url and item.image_url:
+            match.image_url = item.image_url
         if match.kind in {"", "other"} and item.kind not in {"", "other"}:
             match.kind = item.kind
     return merged

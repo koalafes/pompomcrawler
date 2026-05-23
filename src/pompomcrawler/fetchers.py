@@ -24,6 +24,7 @@ class LinkExtractor(HTMLParser):
         self._current_href = ""
         self._current_text: list[str] = []
         self.links: list[tuple[str, str]] = []
+        self.image_candidates: list[tuple[str, str, int]] = []
         self.text_parts: list[str] = []
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
@@ -36,6 +37,24 @@ class LinkExtractor(HTMLParser):
             attr_map = {key: value or "" for key, value in attrs}
             self._current_href = attr_map.get("href", "")
             self._current_text = []
+        if tag == "meta":
+            attr_map = {key.lower(): value or "" for key, value in attrs}
+            name = (attr_map.get("property") or attr_map.get("name") or "").lower()
+            content = attr_map.get("content", "")
+            if name in {"og:image", "og:image:secure_url", "twitter:image", "twitter:image:src"}:
+                self.image_candidates.append((content, name, 0))
+        if tag == "link":
+            attr_map = {key.lower(): value or "" for key, value in attrs}
+            rel = attr_map.get("rel", "").lower()
+            if "image_src" in rel and attr_map.get("href"):
+                self.image_candidates.append((attr_map["href"], rel, 1))
+        if tag == "img":
+            attr_map = {key.lower(): value or "" for key, value in attrs}
+            src = first_present(attr_map, ["src", "data-src", "data-original", "data-lazy-src", "data-srcset"])
+            src = first_srcset_url(src)
+            if src:
+                label = " ".join([attr_map.get("alt", ""), attr_map.get("class", ""), attr_map.get("id", "")])
+                self.image_candidates.append((src, label, 2))
 
     def handle_endtag(self, tag: str) -> None:
         if tag in {"script", "style", "noscript"} and self._skip_depth:
@@ -66,7 +85,43 @@ def normalize_space(value: str) -> str:
     return re.sub(r"\s+", " ", html.unescape(value)).strip()
 
 
-def fetch_url(url: str, timeout: int = 20) -> tuple[str, str, list[tuple[str, str]]]:
+def first_present(values: dict[str, str], keys: list[str]) -> str:
+    for key in keys:
+        value = values.get(key, "").strip()
+        if value:
+            return value
+    return ""
+
+
+def first_srcset_url(value: str) -> str:
+    if not value:
+        return ""
+    return value.split(",", maxsplit=1)[0].strip().split(" ", maxsplit=1)[0]
+
+
+def select_image_url(base_url: str, candidates: list[tuple[str, str, int]]) -> str:
+    ranked = []
+    for raw_url, label, priority in candidates:
+        image_url = normalize_space(raw_url)
+        if not image_url or image_url.startswith(("data:", "blob:", "javascript:")):
+            continue
+        absolute = urljoin(base_url, image_url)
+        lowered = f"{absolute} {label}".lower()
+        if any(token in lowered for token in ["favicon", "apple-touch-icon", "logo", "sns-", "share", "blank", "spacer"]):
+            continue
+        if absolute.lower().split("?", maxsplit=1)[0].endswith(".svg"):
+            continue
+        relevance = 0
+        if any(token in lowered for token in ["ポム", "pompom", "purin", "pn-", "goods", "event", "campaign", "cafe"]):
+            relevance = -1
+        ranked.append((priority, relevance, absolute))
+    if not ranked:
+        return ""
+    ranked.sort()
+    return ranked[0][2]
+
+
+def fetch_url(url: str, timeout: int = 20) -> tuple[str, str, list[tuple[str, str]], str]:
     request = Request(url, headers={"User-Agent": USER_AGENT})
     with urlopen(request, timeout=timeout) as response:
         raw = response.read()
@@ -76,7 +131,8 @@ def fetch_url(url: str, timeout: int = 20) -> tuple[str, str, list[tuple[str, st
     parser.feed(body)
     text = normalize_space(" ".join(parser.text_parts))[:TEXT_LIMIT]
     title = normalize_space(parser.title) or url
-    return title, text, parser.links
+    image_url = select_image_url(url, parser.image_candidates)
+    return title, text, parser.links, image_url
 
 
 def keyword_match(value: str, keywords: Iterable[str]) -> bool:
@@ -94,8 +150,17 @@ def fetch_page_source(
     url = str(source.get("url", ""))
     docs: list[RawDocument] = []
     try:
-        title, text, links = fetch_url(url)
-        docs.append(RawDocument(url=url, source_name=source_name, title=title, text=text, fetched_at=now_iso()))
+        title, text, links, image_url = fetch_url(url)
+        docs.append(
+            RawDocument(
+                url=url,
+                source_name=source_name,
+                title=title,
+                text=text,
+                fetched_at=now_iso(),
+                image_url=image_url,
+            )
+        )
     except Exception as exc:
         docs.append(
             RawDocument(
@@ -119,7 +184,7 @@ def fetch_page_source(
         seen.add(absolute)
         try:
             time.sleep(delay_seconds)
-            title, text, _ = fetch_url(absolute)
+            title, text, _, image_url = fetch_url(absolute)
             docs.append(
                 RawDocument(
                     url=absolute,
@@ -128,6 +193,7 @@ def fetch_page_source(
                     text=text,
                     fetched_at=now_iso(),
                     notes=f"Discovered from {url}",
+                    image_url=image_url,
                 )
             )
         except Exception as exc:
@@ -175,6 +241,7 @@ def fetch_rss_source(source: dict, keywords: list[str]) -> list[RawDocument]:
         description = normalize_space(entry.get("summary", "") or entry.get("description", ""))
         if not keyword_match(f"{item_title} {description} {item_link}", keywords):
             continue
+        image_url = rss_image_url(entry, item_link)
         docs.append(
             RawDocument(
                 url=item_link,
@@ -183,6 +250,22 @@ def fetch_rss_source(source: dict, keywords: list[str]) -> list[RawDocument]:
                 text=f"{item_title}\n{description}",
                 fetched_at=now_iso(),
                 notes=f"RSS item from {url}",
+                image_url=image_url,
             )
         )
     return docs
+
+
+def rss_image_url(entry: object, base_url: str) -> str:
+    candidates: list[tuple[str, str, int]] = []
+    for field in ["media_thumbnail", "media_content", "links"]:
+        values = entry.get(field, []) if hasattr(entry, "get") else getattr(entry, field, [])
+        for item in values or []:
+            if not isinstance(item, dict):
+                continue
+            image_url = item.get("url") or item.get("href") or ""
+            mime_type = str(item.get("type") or "")
+            rel = str(item.get("rel") or "")
+            if image_url and ("image" in mime_type or rel == "enclosure" or field != "links"):
+                candidates.append((str(image_url), field, 0))
+    return select_image_url(base_url, candidates)

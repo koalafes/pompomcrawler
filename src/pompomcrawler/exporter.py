@@ -47,7 +47,7 @@ def export_schedule(
         sheet.append([item.to_dict().get(column, "") for column in SCHEDULE_COLUMNS])
     for index, column in enumerate(SCHEDULE_COLUMNS, start=1):
         width = max(12, min(60, len(column) + 4))
-        if column in {"title", "source_url", "review_reason", "notes"}:
+        if column in {"title", "source_url", "image_url", "review_reason", "notes"}:
             width = 45
         sheet.column_dimensions[get_column_letter(index)].width = width
     sheet.auto_filter.ref = sheet.dimensions
