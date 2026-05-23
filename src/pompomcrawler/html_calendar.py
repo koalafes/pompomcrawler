@@ -281,6 +281,9 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool) -> st
       display: grid;
       grid-template-columns: repeat(7, minmax(0, 1fr));
     }}
+    .mobile-schedule {{
+      display: none;
+    }}
     .day {{
       min-height: 136px;
       padding: 9px;
@@ -453,6 +456,76 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool) -> st
       color: var(--muted);
       text-align: center;
     }}
+    .mobile-day-card {{
+      border: 1px solid rgba(122, 75, 39, .13);
+      border-radius: 8px;
+      background: rgba(255, 253, 245, .92);
+      box-shadow: 0 10px 24px rgba(122, 75, 39, .08);
+      overflow: hidden;
+    }}
+    .mobile-day-card.is-today {{
+      border-color: var(--mint);
+      box-shadow: 0 12px 30px rgba(71, 185, 169, .18);
+    }}
+    .mobile-day-head {{
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 12px 14px;
+      background: linear-gradient(90deg, #fff0bf, #e7f8f4);
+      color: var(--caramel);
+      font-weight: 900;
+    }}
+    .mobile-day-head span:first-child {{
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }}
+    .mobile-day-count {{
+      min-width: 32px;
+      height: 28px;
+      display: inline-grid;
+      place-items: center;
+      border-radius: 999px;
+      background: #fffdf5;
+      color: #167c70;
+      font-size: 13px;
+    }}
+    .mobile-events {{
+      display: grid;
+      gap: 8px;
+      padding: 10px;
+    }}
+    .mobile-event {{
+      width: 100%;
+      min-height: 58px;
+      border: 0;
+      border-left: 5px solid var(--mint);
+      border-radius: 8px;
+      padding: 10px 12px;
+      background: var(--mint-soft);
+      color: var(--cocoa);
+      text-align: left;
+    }}
+    .mobile-event.product {{ border-left-color: var(--caramel); background: #fff0bf; }}
+    .mobile-event.event {{ border-left-color: var(--sky); background: #eaf5ff; }}
+    .mobile-event.campaign {{ border-left-color: var(--berry); background: #ffeaf0; }}
+    .mobile-event.reservation {{ border-left-color: var(--leaf); background: #ecf8e9; }}
+    .mobile-event strong {{
+      display: block;
+      font-size: 14px;
+      line-height: 1.35;
+      letter-spacing: 0;
+    }}
+    .mobile-event span {{
+      display: block;
+      margin-top: 5px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+    }}
     dialog {{
       width: min(720px, calc(100vw - 28px));
       border: 1px solid rgba(122, 75, 39, .16);
@@ -481,10 +554,55 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool) -> st
     @media (max-width: 640px) {{
       .brand {{ grid-template-columns: 52px minmax(0, 1fr); }}
       .pudding-mark {{ width: 52px; height: 52px; }}
-      .calendar-panel {{ overflow-x: auto; }}
-      .calendar-head, .calendar-grid {{ min-width: 760px; }}
+      .topbar-inner {{ gap: 12px; }}
+      .brand h1 {{ font-size: 20px; }}
+      .brand p {{ font-size: 12px; }}
+      .month-controls {{
+        display: grid;
+        grid-template-columns: 44px 1fr 44px;
+        width: 100%;
+      }}
+      .icon-button, .text-button {{
+        width: 100%;
+        min-height: 46px;
+      }}
+      .layout {{
+        padding: 14px 10px 28px;
+        gap: 12px;
+      }}
+      .toolbar {{
+        padding: 10px;
+        gap: 8px;
+      }}
+      .toolbar .field:first-child {{
+        order: -1;
+      }}
+      .field {{
+        min-height: 48px;
+      }}
+      .field span {{
+        min-width: 34px;
+      }}
       .stats {{ grid-template-columns: 1fr; }}
-      .toolbar {{ gap: 8px; }}
+      .stat {{
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        min-height: 52px;
+      }}
+      .stat span {{
+        margin-top: 0;
+      }}
+      .calendar-panel {{
+        display: none;
+      }}
+      .mobile-schedule {{
+        display: grid;
+        gap: 12px;
+      }}
+      .side-panel {{
+        display: none;
+      }}
     }}
   </style>
 </head>
@@ -530,6 +648,7 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool) -> st
         <div class="calendar-head" id="calendarTitle"></div>
         <div class="calendar-grid" id="calendarGrid"></div>
       </section>
+      <section class="mobile-schedule" id="mobileSchedule" aria-label="スマホ用予定一覧"></section>
       <aside class="side-panel" aria-label="詳細一覧">
         <div class="side-header">
           <h2 id="agendaTitle">これからの予定</h2>
@@ -559,6 +678,7 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool) -> st
     const grid = document.getElementById("calendarGrid");
     const title = document.getElementById("calendarTitle");
     const agenda = document.getElementById("agenda");
+    const mobileSchedule = document.getElementById("mobileSchedule");
     const agendaTitle = document.getElementById("agendaTitle");
     const agendaSubtitle = document.getElementById("agendaSubtitle");
     const detailDialog = document.getElementById("detailDialog");
@@ -634,6 +754,7 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool) -> st
       renderStats(items);
       renderCalendar(items);
       renderAgenda(items);
+      renderMobileSchedule(items);
     }}
     function renderStats(items) {{
       document.getElementById("statTotal").textContent = items.length;
@@ -711,6 +832,59 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool) -> st
         return;
       }}
       ordered.forEach(item => agenda.append(agendaItem(item)));
+    }}
+    function renderMobileSchedule(items) {{
+      mobileSchedule.innerHTML = "";
+      const dated = items.filter(item => item.primaryDate).sort((a, b) => a.primaryDate.localeCompare(b.primaryDate));
+      const undated = items.filter(item => !item.primaryDate);
+      const grouped = groupByDate(dated);
+      const today = isoDate(new Date());
+      Object.entries(grouped).forEach(([date, dateItems]) => {{
+        mobileSchedule.append(mobileDayCard(date, dateItems, date === today));
+      }});
+      if (undated.length) {{
+        mobileSchedule.append(mobileDayCard("日付未確定", undated, false));
+      }}
+      if (!mobileSchedule.children.length) {{
+        const empty = document.createElement("div");
+        empty.className = "empty";
+        empty.textContent = "表示できる予定がありません";
+        mobileSchedule.append(empty);
+      }}
+    }}
+    function groupByDate(items) {{
+      return items.reduce((groups, item) => {{
+        const key = item.primaryDate || "日付未確定";
+        if (!groups[key]) groups[key] = [];
+        groups[key].push(item);
+        return groups;
+      }}, {{}});
+    }}
+    function mobileDayCard(date, items, isToday) {{
+      const card = document.createElement("article");
+      card.className = `mobile-day-card${{isToday ? " is-today" : ""}}`;
+      const head = document.createElement("div");
+      head.className = "mobile-day-head";
+      head.innerHTML = `<span>${{escapeHtml(formatMobileDate(date, isToday))}}</span><span class="mobile-day-count">${{items.length}}</span>`;
+      card.append(head);
+      const list = document.createElement("div");
+      list.className = "mobile-events";
+      items.forEach(item => list.append(mobileEventButton(item)));
+      card.append(list);
+      return card;
+    }}
+    function mobileEventButton(item) {{
+      const button = document.createElement("button");
+      button.className = `mobile-event ${{item.kind}}`;
+      button.innerHTML = `<strong>${{escapeHtml(item.title)}}</strong><span>${{escapeHtml(dateSummary(item))}} / ${{escapeHtml(item.kindLabel)}}</span>`;
+      button.addEventListener("click", () => openDetail(item));
+      return button;
+    }}
+    function formatMobileDate(value, isToday) {{
+      if (value === "日付未確定") return value;
+      const date = parseLocalDate(value);
+      const label = `${{date.getMonth() + 1}}/${{date.getDate()}}（${{weekdays[date.getDay()]}}）`;
+      return isToday ? `${{label}} 今日` : label;
     }}
     function agendaItem(item) {{
       const el = document.createElement("article");
