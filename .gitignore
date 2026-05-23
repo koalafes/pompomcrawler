@@ -1,0 +1,12 @@
+.env
+.env.*
+!.env.example
+.swp
+.*.swp
+.venv/
+__pycache__/
+.pytest_cache/
+*.egg-info/
+**/*.egg-info/
+data/*.jsonl
+outputs/

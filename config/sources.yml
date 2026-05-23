@@ -1,0 +1,45 @@
+keywords:
+  - ポムポムプリン
+  - ぽむぽむぷりん
+  - POMPOMPURIN
+  - Pom Pom Purin
+  - ポムポムプリン30周年
+  - サンリオ ポムポムプリン
+  - ポムポムプリン コラボ
+  - ポムポムプリン 新商品
+  - ポムポムプリン イベント
+
+max_discovered_links_per_source: 25
+
+pages:
+  - name: サンリオ公式 ポムポムプリン
+    url: https://www.sanrio.co.jp/characters/pompompurin/?id=news
+  - name: サンリオ公式 ニュース
+    url: https://www.sanrio.co.jp/news/
+  - name: サンリオ公式 グッズ
+    url: https://www.sanrio.co.jp/news/goods/
+  - name: サンリオ企業ニュース
+    url: https://corporate.sanrio.co.jp/news/
+  - name: サンリオピューロランド
+    url: https://www.puroland.jp/
+  - name: ハーモニーランド
+    url: https://www.harmonyland.jp/
+  - name: PR TIMES 検索
+    url: https://prtimes.jp/main/action.php?run=html&page=searchkey&search_word=%E3%83%9D%E3%83%A0%E3%83%9D%E3%83%A0%E3%83%97%E3%83%AA%E3%83%B3
+  - name: atpress 検索
+    url: https://www.atpress.ne.jp/search?keyword=%E3%83%9D%E3%83%A0%E3%83%9D%E3%83%A0%E3%83%97%E3%83%AA%E3%83%B3
+
+rss:
+  - name: PR TIMES サンリオ検索RSS
+    url: https://prtimes.jp/main/rss/b/%E3%82%B5%E3%83%B3%E3%83%AA%E3%82%AA
+
+checklist_queries:
+  - ポムポムプリン 新商品
+  - ポムポムプリン イベント
+  - ポムポムプリン コラボ
+  - ポムポムプリン 予約
+  - ポムポムプリン 期間限定
+  - ポムポムプリン カフェ
+  - ポムポムプリン 30周年
+  - POMPOMPURIN new goods Japan
+
