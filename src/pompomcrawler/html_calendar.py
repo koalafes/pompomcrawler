@@ -132,15 +132,9 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool) -> st
     }}
     .brand {{
       display: grid;
-      grid-template-columns: 64px minmax(0, 1fr);
-      gap: 14px;
+      grid-template-columns: minmax(0, 1fr);
       align-items: center;
       min-width: 0;
-    }}
-    .pudding-mark {{
-      width: 64px;
-      height: 64px;
-      filter: drop-shadow(0 12px 18px rgba(122, 75, 39, .18));
     }}
     .brand h1 {{
       margin: 0;
@@ -612,8 +606,6 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool) -> st
       .day {{ min-height: 112px; padding: 6px; }}
     }}
     @media (max-width: 640px) {{
-      .brand {{ grid-template-columns: 52px minmax(0, 1fr); }}
-      .pudding-mark {{ width: 52px; height: 52px; }}
       .topbar-inner {{ gap: 12px; }}
       .brand h1 {{ font-size: 20px; }}
       .brand p {{ font-size: 12px; }}
@@ -668,14 +660,6 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool) -> st
     <header class="topbar">
       <div class="topbar-inner">
         <div class="brand">
-          <svg class="pudding-mark" viewBox="0 0 96 96" role="img" aria-label="pudding calendar mark">
-            <path d="M20 38c0-17 12-28 28-28s28 11 28 28v24c0 13-12 24-28 24S20 75 20 62V38Z" fill="#FFE08A"/>
-            <path d="M24 35c3-13 12-20 24-20s21 7 24 20c-6 5-12 5-18 1-5-3-8-3-13 0-6 4-11 4-17-1Z" fill="#7A4B27"/>
-            <circle cx="38" cy="51" r="3.5" fill="#352417"/>
-            <circle cx="58" cy="51" r="3.5" fill="#352417"/>
-            <path d="M42 63c4 4 8 4 12 0" fill="none" stroke="#352417" stroke-width="3" stroke-linecap="round"/>
-            <path d="M28 79h40" stroke="#47B9A9" stroke-width="5" stroke-linecap="round"/>
-          </svg>
           <div>
             <h1>ポムポムプリン予定帳</h1>
             <p>{escape(generated_at)} / {escape(window_text)}</p>
