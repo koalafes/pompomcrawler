@@ -1,0 +1,607 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ポムポムプリン収集カレンダー</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f7f5ef;
+      --surface: #ffffff;
+      --ink: #25211c;
+      --muted: #6d665d;
+      --line: #ded8ce;
+      --accent: #0f766e;
+      --accent-soft: #d7efec;
+      --gold: #e0a92f;
+      --rose: #cf5b73;
+      --blue: #3b6ea8;
+      --green: #3d8b5b;
+      --shadow: 0 16px 40px rgba(37, 33, 28, .08);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.5;
+    }
+    button, input, select { font: inherit; }
+    a { color: inherit; }
+    .app-shell { min-height: 100vh; }
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      background: rgba(247, 245, 239, .92);
+      border-bottom: 1px solid var(--line);
+      backdrop-filter: blur(16px);
+    }
+    .topbar-inner {
+      width: min(1440px, 100%);
+      margin: 0 auto;
+      padding: 14px 20px;
+      display: grid;
+      grid-template-columns: minmax(220px, 1fr) auto;
+      gap: 16px;
+      align-items: center;
+    }
+    .brand h1 {
+      margin: 0;
+      font-size: clamp(20px, 2.2vw, 30px);
+      letter-spacing: 0;
+      line-height: 1.15;
+    }
+    .brand p {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .month-controls {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      justify-content: flex-end;
+    }
+    .icon-button, .text-button {
+      min-height: 40px;
+      border: 1px solid var(--line);
+      background: var(--surface);
+      color: var(--ink);
+      cursor: pointer;
+      box-shadow: 0 1px 0 rgba(37, 33, 28, .04);
+    }
+    .icon-button {
+      width: 40px;
+      display: inline-grid;
+      place-items: center;
+      border-radius: 8px;
+      font-size: 20px;
+      line-height: 1;
+    }
+    .text-button {
+      border-radius: 8px;
+      padding: 0 14px;
+      font-weight: 700;
+    }
+    .icon-button:hover, .text-button:hover { border-color: var(--accent); }
+    .layout {
+      width: min(1440px, 100%);
+      margin: 0 auto;
+      padding: 18px 20px 32px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 360px;
+      gap: 18px;
+      align-items: start;
+    }
+    .toolbar {
+      grid-column: 1 / -1;
+      display: grid;
+      grid-template-columns: minmax(220px, 1fr) repeat(2, minmax(150px, 190px)) auto;
+      gap: 10px;
+      align-items: center;
+    }
+    .field {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 42px;
+      padding: 0 12px;
+      border: 1px solid var(--line);
+      background: var(--surface);
+      border-radius: 8px;
+    }
+    .field span { color: var(--muted); }
+    .field input, .field select {
+      width: 100%;
+      min-width: 0;
+      border: 0;
+      outline: 0;
+      background: transparent;
+      color: var(--ink);
+    }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      grid-column: 1 / -1;
+    }
+    .stat {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px;
+      min-width: 0;
+    }
+    .stat strong { display: block; font-size: 24px; line-height: 1; }
+    .stat span { display: block; margin-top: 4px; color: var(--muted); font-size: 12px; }
+    .calendar-panel, .side-panel {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+    .calendar-head {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+      border-bottom: 1px solid var(--line);
+      background: #f2eee5;
+    }
+    .weekday {
+      padding: 10px 8px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+      text-align: center;
+    }
+    .calendar-grid {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+    }
+    .day {
+      min-height: 132px;
+      padding: 8px;
+      border-right: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+      background: #fffdfa;
+      overflow: hidden;
+    }
+    .day:nth-child(7n) { border-right: 0; }
+    .day.is-muted { background: #f6f3ed; color: #8b8479; }
+    .day.is-today { box-shadow: inset 0 0 0 2px var(--accent); }
+    .day-number {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 6px;
+      font-weight: 800;
+      font-size: 13px;
+    }
+    .day-count {
+      min-width: 22px;
+      height: 22px;
+      display: inline-grid;
+      place-items: center;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-size: 12px;
+    }
+    .event-list {
+      display: grid;
+      gap: 5px;
+    }
+    .event-pill {
+      display: block;
+      width: 100%;
+      min-height: 32px;
+      padding: 5px 7px;
+      border: 0;
+      border-left: 4px solid var(--accent);
+      border-radius: 6px;
+      background: #eef8f6;
+      color: var(--ink);
+      text-align: left;
+      cursor: pointer;
+      overflow: hidden;
+    }
+    .event-pill strong {
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 12px;
+      letter-spacing: 0;
+    }
+    .event-pill span {
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: var(--muted);
+      font-size: 11px;
+    }
+    .event-pill.product { border-left-color: var(--gold); background: #fff5d8; }
+    .event-pill.event { border-left-color: var(--blue); background: #eaf2fb; }
+    .event-pill.campaign { border-left-color: var(--rose); background: #fdebf0; }
+    .event-pill.reservation { border-left-color: var(--green); background: #eaf7ef; }
+    .more-button {
+      width: 100%;
+      border: 0;
+      background: transparent;
+      color: var(--accent);
+      cursor: pointer;
+      font-weight: 800;
+      font-size: 12px;
+      text-align: left;
+      padding: 2px 0;
+    }
+    .side-panel {
+      position: sticky;
+      top: 92px;
+      max-height: calc(100vh - 112px);
+      display: flex;
+      flex-direction: column;
+    }
+    .side-header {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--line);
+      background: #f2eee5;
+    }
+    .side-header h2 { margin: 0; font-size: 18px; letter-spacing: 0; }
+    .side-header p { margin: 4px 0 0; color: var(--muted); font-size: 12px; }
+    .agenda {
+      padding: 12px;
+      overflow: auto;
+      display: grid;
+      gap: 10px;
+    }
+    .agenda-item {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px;
+      background: #fffdfa;
+    }
+    .agenda-item h3 {
+      margin: 0;
+      font-size: 15px;
+      line-height: 1.35;
+      letter-spacing: 0;
+    }
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin: 8px 0;
+    }
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      min-height: 24px;
+      padding: 0 8px;
+      border-radius: 999px;
+      background: #ece7dc;
+      color: var(--ink);
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .tag.review { background: #fff0cc; }
+    .tag.confirmed { background: #dff4e7; }
+    .tag.excluded { background: #ececec; color: #777; }
+    .detail-text { margin: 0; color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }
+    .source-link {
+      display: inline-block;
+      margin-top: 10px;
+      color: var(--accent);
+      font-weight: 800;
+      font-size: 13px;
+      overflow-wrap: anywhere;
+    }
+    .empty {
+      padding: 28px 14px;
+      color: var(--muted);
+      text-align: center;
+    }
+    dialog {
+      width: min(720px, calc(100vw - 28px));
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 0;
+      box-shadow: var(--shadow);
+    }
+    dialog::backdrop { background: rgba(37, 33, 28, .34); }
+    .modal-body { padding: 18px; }
+    .modal-body h2 { margin: 0 0 10px; font-size: 22px; letter-spacing: 0; }
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      padding: 12px 18px;
+      border-top: 1px solid var(--line);
+      background: #f7f5ef;
+    }
+    @media (max-width: 980px) {
+      .topbar-inner, .layout { padding-left: 12px; padding-right: 12px; }
+      .topbar-inner, .layout, .toolbar { grid-template-columns: 1fr; }
+      .month-controls { justify-content: start; }
+      .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .side-panel { position: static; max-height: none; }
+      .day { min-height: 112px; padding: 6px; }
+    }
+    @media (max-width: 640px) {
+      .calendar-panel { overflow-x: auto; }
+      .calendar-head, .calendar-grid { min-width: 760px; }
+      .stats { grid-template-columns: 1fr; }
+      .toolbar { gap: 8px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="topbar-inner">
+        <div class="brand">
+          <h1>ポムポムプリン収集カレンダー</h1>
+          <p>2026-05-23 01:01 生成 / 対象: 直近30日＋未来 / 確認待ちを優先して整理</p>
+        </div>
+        <div class="month-controls" aria-label="月移動">
+          <button class="icon-button" id="prevMonth" title="前の月" aria-label="前の月">‹</button>
+          <button class="text-button" id="todayButton">今日</button>
+          <button class="icon-button" id="nextMonth" title="次の月" aria-label="次の月">›</button>
+        </div>
+      </div>
+    </header>
+    <main class="layout">
+      <section class="toolbar" aria-label="絞り込み">
+        <label class="field"><span>検索</span><input id="searchInput" type="search" placeholder="タイトル、会場、ソース"></label>
+        <label class="field"><span>種別</span><select id="kindFilter"><option value="all">すべて</option></select></label>
+        <label class="field"><span>状態</span><select id="statusFilter"><option value="all">すべて</option></select></label>
+        <button class="text-button" id="resetButton">リセット</button>
+      </section>
+      <section class="stats" aria-label="集計">
+        <div class="stat"><strong id="statTotal">0</strong><span>表示中</span></div>
+        <div class="stat"><strong id="statReview">0</strong><span>確認待ち</span></div>
+        <div class="stat"><strong id="statConfirmed">0</strong><span>確認済み</span></div>
+        <div class="stat"><strong id="statUndated">0</strong><span>日付未確定</span></div>
+      </section>
+      <section class="calendar-panel" aria-label="月間カレンダー">
+        <div class="calendar-head" id="calendarTitle"></div>
+        <div class="calendar-grid" id="calendarGrid"></div>
+      </section>
+      <aside class="side-panel" aria-label="詳細一覧">
+        <div class="side-header">
+          <h2 id="agendaTitle">一覧</h2>
+          <p id="agendaSubtitle">日付が近い順</p>
+        </div>
+        <div class="agenda" id="agenda"></div>
+      </aside>
+    </main>
+  </div>
+  <dialog id="detailDialog">
+    <div class="modal-body" id="modalBody"></div>
+    <div class="modal-actions"><button class="text-button" id="closeDialog">閉じる</button></div>
+  </dialog>
+  <script>
+    const ITEMS = [{"id": 1, "title": "サンリオキャラクターズの新作グッズ", "kind": "product", "kindLabel": "商品", "status": "needs_review", "statusLabel": "確認待ち", "startDate": "2026-05-27", "endDate": "2026-05-31", "releaseDate": "2026-05-18", "reservationStart": "", "primaryDate": "2026-05-18", "sellerOrVenue": "しまむら", "sourceUrl": "https://www.sanrio.co.jp/characters/pompompurin/?id=news", "sourceName": "サンリオ公式 ポムポムプリン", "confidence": 0.85, "reviewReason": "Specific details on the product are not provided. / duplicate candidate: Details about the release context missing. / duplicate candidate: Information about the seller is unavailable. / duplicate candidate: Multiple venues listed but only one noted. / duplicate candidate: No specific dates mentioned for the event.", "notes": ""}, {"id": 2, "title": "サンリオキャラクターズの新作グッズ", "kind": "product", "kindLabel": "商品", "status": "needs_review", "statusLabel": "確認待ち", "startDate": "2026-05-27", "endDate": "2026-05-31", "releaseDate": "2026-05-22", "reservationStart": "", "primaryDate": "2026-05-22", "sellerOrVenue": "しまむら", "sourceUrl": "https://www.sanrio.co.jp/characters/pompompurin/?id=profile | https://www.sanrio.co.jp/characters/pompompurin/?id=socialmedia | https://www.sanrio.co.jp/characters/pompompurin/?id=goods | https://www.sanrio.co.jp/characters/pompompurin/?id=movies | https://www.sanrio.co.jp/characters/pompompurin/?id=digital | https://www.sanrio.co.jp/characters/pompompurin/?id=spots", "sourceName": "サンリオ公式 ポムポムプリン discovered", "confidence": 0.85, "reviewReason": "新商品の情報あり / duplicate candidate: リリース日に関する情報あり / duplicate candidate: 30周年を祝う特別な商品 / duplicate candidate: カフェワゴンの開催情報 / duplicate candidate: Potential new product related to Pom Pom Purin. / duplicate candidate: Connection to the 30th anniversary celebration. / duplicate candidate: Scheduled event featuring Pom Pom Purin products. / duplicate candidate: General mention of anniversary celebrations. / duplicate candidate: Insufficient details about the product. / duplicate candidate: Limited information on specific items. / duplicate candidate: Details about availability unclear. / duplicate candidate: OpenAI extracted this candidate. / duplicate candidate: Possible product announcement related to Pom Pom Purin. / duplicate candidate: Product related to Pom Pom Purin. / duplicate candidate: Anniversary product likely related to Pom Pom Purin. / duplicate candidate: Event featuring Pom Pom Purin themes. / duplicate candidate: Potentially relevant product release. / duplicate candidate: Relevant to Pom Pom Purin anniversary. / duplicate candidate: Relevant product related to Pom Pom Purin. / duplicate candidate: Event featuring Pom Pom Purin character. / duplicate candidate: Relevant to anniversary celebrations. / duplicate candidate: New merchandise featuring Sanrio characters including Pom Pom Purin / duplicate candidate: Limited edition charms, possibly including Pom Pom Purin items / duplicate candidate: Event featuring Sanrio Cafe Wagon, likely with Pom Pom Purin items / duplicate candidate: Potential product related to Pom Pom Purin's anniversary", "notes": "サンリオの新商品が登場するとのこと"}, {"id": 3, "title": "LINE Login", "kind": "other", "kindLabel": "その他", "status": "excluded", "statusLabel": "除外", "startDate": "", "endDate": "", "releaseDate": "", "reservationStart": "", "primaryDate": "", "sellerOrVenue": "", "sourceUrl": "https://social-plugins.line.me/lineit/share?url=https%3A%2F%2Fwww.sanrio.co.jp%2Fcharacters%2Fpompompurin%2F", "sourceName": "サンリオ公式 ポムポムプリン discovered", "confidence": 0.3, "reviewReason": "Unrelated to Pom Pom Purin products or events", "notes": "Text does not provide relevant product or event information."}, {"id": 4, "title": "ポムポムプリン", "kind": "other", "kindLabel": "その他", "status": "needs_review", "statusLabel": "確認待ち", "startDate": "", "endDate": "", "releaseDate": "", "reservationStart": "", "primaryDate": "", "sellerOrVenue": "", "sourceUrl": "https://x.com/intent/tweet?url=https%3A%2F%2Fwww.sanrio.co.jp%2Fcharacters%2Fpompompurin%2F&text=%E3%83%9D%E3%83%A0%E3%83%9D%E3%83%A0%E3%83%97%E3%83%AA%E3%83%B3%7C%E3%82%B5%E3%83%B3%E3%83%AA%E3%82%AA", "sourceName": "サンリオ公式 ポムポムプリン discovered", "confidence": 0.5, "reviewReason": "General mention of Pom Pom Purin without specific event or product details.", "notes": "Discovered from the Sanrio official page."}, {"id": 5, "title": "サンリオ公式 ポムポムプリン", "kind": "other", "kindLabel": "その他", "status": "excluded", "statusLabel": "除外", "startDate": "", "endDate": "", "releaseDate": "", "reservationStart": "", "primaryDate": "", "sellerOrVenue": "", "sourceUrl": "https://www.facebook.com/sharer/sharer.php?u=https%3A%2F%2Fwww.sanrio.co.jp%2Fcharacters%2Fpompompurin%2F", "sourceName": "サンリオ公式 ポムポムプリン discovered", "confidence": 0.5, "reviewReason": "Not a product or event schedule.", "notes": "Discovered from Facebook link, no specific product or event details provided."}, {"id": 6, "title": "ポムポムプリン30周年【公式】", "kind": "event", "kindLabel": "イベント", "status": "needs_review", "statusLabel": "確認待ち", "startDate": "", "endDate": "", "releaseDate": "", "reservationStart": "", "primaryDate": "", "sellerOrVenue": "Instagram/@pompompurin_30th", "sourceUrl": "https://www.instagram.com/pompompurin_30th/", "sourceName": "サンリオ公式 ポムポムプリン discovered", "confidence": 0.7, "reviewReason": "Event details unclear, needs more information.", "notes": "30th anniversary of Pom Pom Purin."}, {"id": 7, "title": "TikTok - Make Your Day", "kind": "other", "kindLabel": "その他", "status": "needs_review", "statusLabel": "確認待ち", "startDate": "", "endDate": "", "releaseDate": "", "reservationStart": "", "primaryDate": "", "sellerOrVenue": "", "sourceUrl": "https://www.tiktok.com/@pompompurin_anime", "sourceName": "サンリオ公式 ポムポムプリン discovered", "confidence": 0.5, "reviewReason": "Limited information available in the text.", "notes": "Discovered from Sanrio official website."}, {"id": 8, "title": "ポムポムプリン30周年記念 24金ペンダント", "kind": "product", "kindLabel": "商品", "status": "needs_review", "statusLabel": "確認待ち", "startDate": "2023-05-23", "endDate": "", "releaseDate": "2026-05-22", "reservationStart": "", "primaryDate": "2026-05-22", "sellerOrVenue": "PREMICO（プレミコ）オンラインショップ", "sourceUrl": "https://www.sanrio.co.jp/news/goods/pn-premico-pendant-20260522/", "sourceName": "サンリオ公式 ポムポムプリン discovered | サンリオ公式 ニュース", "confidence": 0.8, "reviewReason": "Product information is plausible but needs confirmation. / duplicate candidate: release date not specified / duplicate candidate: details unclear", "notes": "A luxurious pendant celebrating the 30th anniversary of Pom Pom Purin, featuring a solid gold pudding with a diamond crown."}, {"id": 9, "title": "メモ帳 ポムポムプリン", "kind": "product", "kindLabel": "商品", "status": "needs_review", "statusLabel": "確認待ち", "startDate": "", "endDate": "", "releaseDate": "", "reservationStart": "", "primaryDate": "", "sellerOrVenue": "サンリオ", "sourceUrl": "https://www.sanrio.co.jp/digital/icon_memo_and_pn/", "sourceName": "サンリオ公式 ポムポムプリン discovered", "confidence": 0.8, "reviewReason": "Product details found but lacks specific dates.", "notes": "A digital memo app featuring Pom Pom Purin for shopping lists or ToDo lists."}, {"id": 10, "title": "ポムポムプリン くるくるトッピング", "kind": "product", "kindLabel": "商品", "status": "needs_review", "statusLabel": "確認待ち", "startDate": "", "endDate": "", "releaseDate": "", "reservationStart": "", "primaryDate": "", "sellerOrVenue": "サンリオ", "sourceUrl": "https://www.sanrio.co.jp/special/pompompurin/kurukuru/", "sourceName": "サンリオ公式 ポムポムプリン discovered", "confidence": 0.7, "reviewReason": "Limited details on dates and context.", "notes": "Discovered from https://www.sanrio.co.jp/characters/pompompurin/?id=news"}, {"id": 11, "title": "ポムポムプリン30周年イベント", "kind": "event", "kindLabel": "イベント", "status": "needs_review", "statusLabel": "確認待ち", "startDate": "2026-05-11", "endDate": "2026-05-23", "releaseDate": "", "reservationStart": "", "primaryDate": "2026-05-11", "sellerOrVenue": "ちょこっとファーム", "sourceUrl": "https://www.sanrio.co.jp/news/digital/pn-chocofa-30th-20260511/", "sourceName": "サンリオ公式 ポムポムプリン discovered", "confidence": 0.8, "reviewReason": "Event details provided, but verification needed for clarity.", "notes": "コラボイベントで限定アイテムが登場。"}, {"id": 12, "title": "ポムポムプリン当りくじ", "kind": "product", "kindLabel": "商品", "status": "needs_review", "statusLabel": "確認待ち", "startDate": "2026-05-23", "endDate": "", "releaseDate": "", "reservationStart": "", "primaryDate": "2026-05-23", "sellerOrVenue": "全国のサンリオショップ、コンビニエンスストア", "sourceUrl": "https://www.sanrio.co.jp/news/goods/pn-atarikuji-20260514/", "sourceName": "サンリオ公式 ニュース discovered", "confidence": 0.8, "reviewReason": "発売日が記載されているが詳細な情報が不足しているため", "notes": "当りくじ、1回880円（税込み）。賞品にかき氷機、ぬいぐるみ、プラボウル等あり。30周年記念。"}, {"id": 13, "title": "https://corporate.sanrio.co.jp/news/assets/pdf/2023/20230915100257281s.pdf", "kind": "event", "kindLabel": "イベント", "status": "needs_review", "statusLabel": "確認待ち", "startDate": "", "endDate": "", "releaseDate": "", "reservationStart": "", "primaryDate": "", "sellerOrVenue": "", "sourceUrl": "https://corporate.sanrio.co.jp/news/assets/pdf/2023/20230915100257281s.pdf | https://corporate.sanrio.co.jp/news/assets/pdf/2021/20220301102205436s.pdf | https://corporate.sanrio.co.jp/news/assets/pdf/2021/20220301103606286s.pdf", "sourceName": "サンリオ企業ニュース discovered", "confidence": 0.5, "reviewReason": "No explicit date or product event found in the text. / duplicate candidate: No clear event or product information found in the text. / duplicate candidate: PDF contains no specific event details.", "notes": "PDF content did not provide relevant information."}, {"id": 14, "title": "https://corporate.sanrio.co.jp/news/assets/pdf/2021/20220228152248917s.pdf", "kind": "other", "kindLabel": "その他", "status": "needs_review", "statusLabel": "確認待ち", "startDate": "", "endDate": "", "releaseDate": "", "reservationStart": "", "primaryDate": "", "sellerOrVenue": "", "sourceUrl": "https://corporate.sanrio.co.jp/news/assets/pdf/2021/20220228152248917s.pdf", "sourceName": "サンリオ企業ニュース discovered", "confidence": 0.5, "reviewReason": "Document does not contain clear product or event details", "notes": "PDF appears to contain content unrelated to Pom Pom Purin."}, {"id": 15, "title": "https://corporate.sanrio.co.jp/news/assets/pdf/2020/20220303103824559s.pdf", "kind": "other", "kindLabel": "その他", "status": "needs_review", "statusLabel": "確認待ち", "startDate": "", "endDate": "", "releaseDate": "", "reservationStart": "", "primaryDate": "", "sellerOrVenue": "", "sourceUrl": "https://corporate.sanrio.co.jp/news/assets/pdf/2020/20220303103824559s.pdf", "sourceName": "サンリオ企業ニュース discovered", "confidence": 0.5, "reviewReason": "Unclear context regarding Pom Pom Purin products or events", "notes": "Discovered from https://corporate.sanrio.co.jp/news/"}, {"id": 16, "title": "POMPOMPURIN 30th Anniversary", "kind": "event", "kindLabel": "イベント", "status": "needs_review", "statusLabel": "確認待ち", "startDate": "2026-04-10", "endDate": "2026-12-31", "releaseDate": "", "reservationStart": "", "primaryDate": "2026-04-10", "sellerOrVenue": "Sanrio Puroland", "sourceUrl": "https://www.puroland.jp/ | https://www.puroland.jp/event-campaign/pompompurin30th/", "sourceName": "サンリオピューロランド | サンリオピューロランド discovered", "confidence": 0.9, "reviewReason": "Event mentioned but no specific dates provided / duplicate candidate: Campaign mentioned but no specific dates provided / duplicate candidate: OpenAI extracted this candidate.", "notes": "Celebrating Pompompurin's 30th anniversary as part of event"}, {"id": 17, "title": "#ポムっと一息SNSキャンペーン", "kind": "campaign", "kindLabel": "キャンペーン", "status": "needs_review", "statusLabel": "確認待ち", "startDate": "2026-04-10", "endDate": "2026-11-30", "releaseDate": "", "reservationStart": "", "primaryDate": "2026-04-10", "sellerOrVenue": "サンリオピューロランド", "sourceUrl": "https://www.puroland.jp/event-campaign/pompompurin30th_sns_campaign/", "sourceName": "サンリオピューロランド discovered", "confidence": 0.8, "reviewReason": "Potential Pom Pom Purin campaign for the 30th anniversary", "notes": "Participants are encouraged to take photos with Pom Pom Purin in designated relaxing spots and post on social media."}, {"id": 18, "title": "サンリオキャラクターパーク ハーモニーランド", "kind": "event", "kindLabel": "イベント", "status": "needs_review", "statusLabel": "確認待ち", "startDate": "", "endDate": "", "releaseDate": "", "reservationStart": "", "primaryDate": "", "sellerOrVenue": "ハーモニーランド", "sourceUrl": "https://www.harmonyland.jp/", "sourceName": "ハーモニーランド", "confidence": 0.7, "reviewReason": "Unsure if it is directly related to Pom Pom Purin, but it is a Sanrio event location.", "notes": ""}, {"id": 19, "title": "ポムポムプリン30周年記念のコラボレーションアイテムをCA4LA オンラインショップ限定で販売", "kind": "product", "kindLabel": "商品", "status": "needs_review", "statusLabel": "確認待ち", "startDate": "2026-06-01", "endDate": "", "releaseDate": "", "reservationStart": "", "primaryDate": "2026-06-01", "sellerOrVenue": "株式会社CA4LA", "sourceUrl": "https://prtimes.jp/main/action.php?run=html&page=searchkey&search_word=%E3%83%9D%E3%83%A0%E3%83%9D%E3%83%A0%E3%83%97%E3%83%AA%E3%83%B3", "sourceName": "PR TIMES 検索", "confidence": 0.8, "reviewReason": "Potentially related to a product release but needs confirmation. / duplicate candidate: Reservation related event but needs confirmation. / duplicate candidate: Possible event but details are vague. / duplicate candidate: Event related to the 30th anniversary, but requires more details. / duplicate candidate: Related to a campaign involving Pom Pom Purin but needs more specifics. / duplicate candidate: Limited-time shop opening, but requires confirmation of details. / duplicate candidate: Related to new product offerings, requires confirmation. / duplicate candidate: Collaboration campaign but needs more confirmation. / duplicate candidate: Mention of event but not specifically related to Pom Pom Purin.", "notes": ""}, {"id": 20, "title": "モイストラボ ルースパウダー ポムポムプリン コラボ", "kind": "product", "kindLabel": "商品", "status": "needs_review", "statusLabel": "確認待ち", "startDate": "", "endDate": "", "releaseDate": "2026-05-22", "reservationStart": "", "primaryDate": "2026-05-22", "sellerOrVenue": "全国ドラッグストア、Amazon等", "sourceUrl": "https://prtimes.jp/main/html/rd/p/000000586.000028974.html", "sourceName": "PR TIMES 検索 discovered", "confidence": 0.95, "reviewReason": "Limited release product from a press release", "notes": "Moist-labo loose powder collaboration featuring Pom Pom Purin, 2 types available."}, {"id": 21, "title": "POMPOMPURIN 30th Anniv. × CA4LA FACE HAT", "kind": "product", "kindLabel": "商品", "status": "needs_review", "statusLabel": "確認待ち", "startDate": "2026-05-29", "endDate": "2026-06-07", "releaseDate": "2026-09-11", "reservationStart": "2026-05-29", "primaryDate": "2026-09-11", "sellerOrVenue": "CA4LA online shop", "sourceUrl": "https://prtimes.jp/main/html/rd/p/000000068.000074802.html", "sourceName": "PR TIMES 検索 discovered", "confidence": 0.9, "reviewReason": "OpenAI extracted this candidate.", "notes": "Collaboration item for Pom Pom Purin's 30th anniversary, handmade hat."}, {"id": 22, "title": "ポムポムプリン バスぐるみ", "kind": "product", "kindLabel": "商品", "status": "needs_review", "statusLabel": "確認待ち", "startDate": "2026-05-23", "endDate": "", "releaseDate": "", "reservationStart": "", "primaryDate": "2026-05-23", "sellerOrVenue": "株式会社ハシートップイン", "sourceUrl": "https://prtimes.jp/main/html/rd/p/000000218.000091783.html", "sourceName": "PR TIMES 検索 discovered", "confidence": 0.8, "reviewReason": "New product launch with specific release date.", "notes": "ぬいぐるみとして遊べるボディスポンジ。価格は1,760円(税込)。"}, {"id": 23, "title": "ポムポムプリン × ホテルニューオータニ博多 夏宿泊分", "kind": "reservation", "kindLabel": "予約", "status": "needs_review", "statusLabel": "確認待ち", "startDate": "2026-06-01", "endDate": "2026-09-30", "releaseDate": "", "reservationStart": "2026-06-01", "primaryDate": "2026-06-01", "sellerOrVenue": "ホテルニューオータニ博多", "sourceUrl": "https://prtimes.jp/main/html/rd/p/000000271.000027824.html", "sourceName": "PR TIMES 検索 discovered", "confidence": 0.8, "reviewReason": "OpenAI extracted this candidate.", "notes": "宿泊予約開始日、30周年記念アイテムの販売が含まれる"}, {"id": 24, "title": "Let’sポーション ポムポムプリン", "kind": "campaign", "kindLabel": "キャンペーン", "status": "needs_review", "statusLabel": "確認待ち", "startDate": "2026-05-21", "endDate": "", "releaseDate": "2026-05-21", "reservationStart": "", "primaryDate": "2026-05-21", "sellerOrVenue": "味の素AGF株式会社", "sourceUrl": "https://prtimes.jp/main/html/rd/p/000000172.000131617.html", "sourceName": "PR TIMES 検索 discovered", "confidence": 0.85, "reviewReason": "Not a product but a promotional campaign involving Pom Pom Purin.", "notes": "New TV commercial featuring Pom Pom Purin for 'Blendy®' Potion."}, {"id": 25, "title": "不二家洋菓子店 ペコちゃん×ポムポムプリンコラボレーション", "kind": "campaign", "kindLabel": "キャンペーン", "status": "needs_review", "statusLabel": "確認待ち", "startDate": "2026-06-01", "endDate": "2026-06-30", "releaseDate": "2026-05-18", "reservationStart": "", "primaryDate": "2026-05-18", "sellerOrVenue": "不二家洋菓子店", "sourceUrl": "https://prtimes.jp/main/html/rd/p/000000428.000097396.html", "sourceName": "PR TIMES 検索 discovered", "confidence": 0.95, "reviewReason": "Potentially relevant collaboration campaign / duplicate candidate: New product associated with Pom Pom Purin anniversary / duplicate candidate: Event related to Pom Pom Purin collaboration", "notes": "Celebrating Pom Pom Purin's 30th anniversary with various special products."}, {"id": 26, "title": "2026年サンリオキャラクター大賞中間順位発表イベント", "kind": "event", "kindLabel": "イベント", "status": "confirmed", "statusLabel": "確認済み", "startDate": "2026-05-12", "endDate": "2026-05-12", "releaseDate": "", "reservationStart": "", "primaryDate": "2026-05-12", "sellerOrVenue": "恵比寿ガーデンプレイス センター広場", "sourceUrl": "https://prtimes.jp/main/html/rd/p/000000737.000037629.html", "sourceName": "PR TIMES 検索 discovered", "confidence": 0.9, "reviewReason": "OpenAI extracted this candidate. / duplicate candidate: 具体的な製品やサービス情報が不足している / duplicate candidate: 具体的な製品名が不明", "notes": "ポムポムプリンが中間順位1位を祝うイベント。約5000人のファンが参加。ダンスパフォーマンスも行われ、特に「プリンとマフィンのポムポムビート☆」が披露された。"}, {"id": 27, "title": "ヒルトン広島 ポムポムプリン スイーツビュッフェ", "kind": "event", "kindLabel": "イベント", "status": "needs_review", "statusLabel": "確認待ち", "startDate": "2026-06-06", "endDate": "2026-09-06", "releaseDate": "", "reservationStart": "2026-05-08", "primaryDate": "2026-06-06", "sellerOrVenue": "ヒルトン広島", "sourceUrl": "https://prtimes.jp/main/html/rd/p/000000077.000087710.html", "sourceName": "PR TIMES 検索 discovered", "confidence": 0.9, "reviewReason": "Event details match theme.", "notes": "30th anniversary themed buffet celebrating ポムポムプリン."}, {"id": 28, "title": "ポムポムポーションCafe", "kind": "event", "kindLabel": "イベント", "status": "needs_review", "statusLabel": "確認待ち", "startDate": "2026-05-21", "endDate": "2026-05-24", "releaseDate": "", "reservationStart": "2026-05-11", "primaryDate": "2026-05-21", "sellerOrVenue": "六本木ヒルズカフェ", "sourceUrl": "https://prtimes.jp/main/html/rd/p/000000168.000131617.html", "sourceName": "PR TIMES 検索 discovered", "confidence": 0.9, "reviewReason": "Specific event details available", "notes": "体験型ポップアップイベント with ポムポムプリン and 'ブレンディ®' ポーション."}, {"id": 29, "title": "新宿タカシマヤ タイムズスクエア×ポムポムプリン 30周年記念コラボレーション企画", "kind": "event", "kindLabel": "イベント", "status": "needs_review", "statusLabel": "確認待ち", "startDate": "2026-05-08", "endDate": "2026-06-06", "releaseDate": "2026-05-07", "reservationStart": "", "primaryDate": "2026-05-07", "sellerOrVenue": "新宿高島屋", "sourceUrl": "https://prtimes.jp/main/html/rd/p/000001445.000069859.html", "sourceName": "PR TIMES 検索 discovered", "confidence": 0.9, "reviewReason": "Event details provided but additional validation needed for specifics. / duplicate candidate: Event details provided but needs confirmation on setup details. / duplicate candidate: Product details mentioned but lacks clarity on availability duration. / duplicate candidate: Event details mentioned but specific logistics require clarification. / duplicate candidate: Event details provided but needs validation on setup. / duplicate candidate: Event needs confirmation on seating arrangement details.", "notes": "Collaboration event celebrating 30th anniversary with Pom Pom Purin."}, {"id": 30, "title": "ポムポムプリン 30th Anniversary POP-UP STORE ～sweet party～", "kind": "event", "kindLabel": "イベント", "status": "needs_review", "statusLabel": "確認待ち", "startDate": "2026-05-14", "endDate": "2026-05-25", "releaseDate": "", "reservationStart": "", "primaryDate": "2026-05-14", "sellerOrVenue": "Shibuya Sakura Stage", "sourceUrl": "https://prtimes.jp/main/html/rd/p/000000319.000095831.html", "sourceName": "PR TIMES 検索 discovered", "confidence": 0.9, "reviewReason": "Event details specified but verification of products and exclusivity needed.", "notes": "Celebrating the 30th anniversary with exclusive merchandise, including plush toys and other character goods."}, {"id": 31, "title": "ポムポムプリンとのコラボキャンペーン", "kind": "campaign", "kindLabel": "キャンペーン", "status": "needs_review", "statusLabel": "確認待ち", "startDate": "2026-05-07", "endDate": "2026-05-31", "releaseDate": "2026-04-28", "reservationStart": "", "primaryDate": "2026-04-28", "sellerOrVenue": "全国の魚べい・元気寿司", "sourceUrl": "https://prtimes.jp/main/html/rd/p/000000231.000020954.html", "sourceName": "PR TIMES 検索 discovered", "confidence": 0.9, "reviewReason": "Details are available but need verification for start and end dates.", "notes": "30周年を迎えたポムポムプリンとのコラボで、限定スイーツや缶バッジが登場。"}];
+    const state = {
+      current: initialMonth(ITEMS),
+      query: "",
+      kind: "all",
+      status: "all",
+      selectedDate: ""
+    };
+    const weekdays = ["日", "月", "火", "水", "木", "金", "土"];
+    const kindLabels = {"product": "商品", "event": "イベント", "campaign": "キャンペーン", "reservation": "予約", "other": "その他"};
+    const statusLabels = {"candidate": "候補", "needs_review": "確認待ち", "confirmed": "確認済み", "excluded": "除外"};
+
+    const grid = document.getElementById("calendarGrid");
+    const title = document.getElementById("calendarTitle");
+    const agenda = document.getElementById("agenda");
+    const agendaTitle = document.getElementById("agendaTitle");
+    const agendaSubtitle = document.getElementById("agendaSubtitle");
+    const detailDialog = document.getElementById("detailDialog");
+    const modalBody = document.getElementById("modalBody");
+
+    document.getElementById("prevMonth").addEventListener("click", () => shiftMonth(-1));
+    document.getElementById("nextMonth").addEventListener("click", () => shiftMonth(1));
+    document.getElementById("todayButton").addEventListener("click", () => {
+      state.current = startOfMonth(new Date());
+      state.selectedDate = isoDate(new Date());
+      render();
+    });
+    document.getElementById("resetButton").addEventListener("click", () => {
+      state.query = "";
+      state.kind = "all";
+      state.status = "all";
+      state.selectedDate = "";
+      document.getElementById("searchInput").value = "";
+      document.getElementById("kindFilter").value = "all";
+      document.getElementById("statusFilter").value = "all";
+      render();
+    });
+    document.getElementById("searchInput").addEventListener("input", event => {
+      state.query = event.target.value.trim().toLowerCase();
+      render();
+    });
+    document.getElementById("kindFilter").addEventListener("change", event => {
+      state.kind = event.target.value;
+      render();
+    });
+    document.getElementById("statusFilter").addEventListener("change", event => {
+      state.status = event.target.value;
+      render();
+    });
+    document.getElementById("closeDialog").addEventListener("click", () => detailDialog.close());
+
+    fillFilters();
+    render();
+
+    function initialMonth(items) {
+      const dated = items.map(item => item.primaryDate).filter(Boolean).sort();
+      return dated.length ? parseLocalDate(dated[0]) : startOfMonth(new Date());
+    }
+    function startOfMonth(date) { return new Date(date.getFullYear(), date.getMonth(), 1); }
+    function isoDate(date) {
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, "0");
+      const d = String(date.getDate()).padStart(2, "0");
+      return `${y}-${m}-${d}`;
+    }
+    function parseLocalDate(value) {
+      const [y, m, d] = value.split("-").map(Number);
+      return new Date(y, m - 1, d);
+    }
+    function shiftMonth(delta) {
+      state.current = new Date(state.current.getFullYear(), state.current.getMonth() + delta, 1);
+      state.selectedDate = "";
+      render();
+    }
+    function fillFilters() {
+      const kindFilter = document.getElementById("kindFilter");
+      const statusFilter = document.getElementById("statusFilter");
+      Object.entries(kindLabels).forEach(([value, label]) => kindFilter.append(new Option(label, value)));
+      Object.entries(statusLabels).forEach(([value, label]) => statusFilter.append(new Option(label, value)));
+    }
+    function filteredItems() {
+      return ITEMS.filter(item => {
+        const text = [item.title, item.sellerOrVenue, item.sourceName, item.reviewReason, item.notes].join(" ").toLowerCase();
+        return (state.kind === "all" || item.kind === state.kind)
+          && (state.status === "all" || item.status === state.status)
+          && (!state.query || text.includes(state.query));
+      });
+    }
+    function render() {
+      const items = filteredItems();
+      renderStats(items);
+      renderCalendar(items);
+      renderAgenda(items);
+    }
+    function renderStats(items) {
+      document.getElementById("statTotal").textContent = items.length;
+      document.getElementById("statReview").textContent = items.filter(item => item.status === "needs_review").length;
+      document.getElementById("statConfirmed").textContent = items.filter(item => item.status === "confirmed").length;
+      document.getElementById("statUndated").textContent = items.filter(item => !item.primaryDate).length;
+    }
+    function renderCalendar(items) {
+      title.innerHTML = "";
+      weekdays.forEach(day => {
+        const el = document.createElement("div");
+        el.className = "weekday";
+        el.textContent = day;
+        title.append(el);
+      });
+      grid.innerHTML = "";
+      const year = state.current.getFullYear();
+      const month = state.current.getMonth();
+      const first = new Date(year, month, 1);
+      const start = new Date(year, month, 1 - first.getDay());
+      const today = isoDate(new Date());
+      for (let index = 0; index < 42; index += 1) {
+        const day = new Date(start.getFullYear(), start.getMonth(), start.getDate() + index);
+        const dayIso = isoDate(day);
+        const dayItems = items.filter(item => item.primaryDate === dayIso);
+        const cell = document.createElement("div");
+        cell.className = "day";
+        if (day.getMonth() !== month) cell.classList.add("is-muted");
+        if (dayIso === today) cell.classList.add("is-today");
+        const dayNumber = document.createElement("div");
+        dayNumber.className = "day-number";
+        dayNumber.innerHTML = `<span>${day.getDate()}</span>${dayItems.length ? `<span class="day-count">${dayItems.length}</span>` : ""}`;
+        cell.append(dayNumber);
+        const list = document.createElement("div");
+        list.className = "event-list";
+        dayItems.slice(0, 3).forEach(item => list.append(eventButton(item)));
+        if (dayItems.length > 3) {
+          const more = document.createElement("button");
+          more.className = "more-button";
+          more.textContent = `+${dayItems.length - 3}件`;
+          more.addEventListener("click", () => {
+            state.selectedDate = dayIso;
+            renderAgenda(items);
+          });
+          list.append(more);
+        }
+        cell.append(list);
+        cell.addEventListener("click", event => {
+          if (event.target.closest("button")) return;
+          state.selectedDate = dayIso;
+          renderAgenda(items);
+        });
+        grid.append(cell);
+      }
+      const monthLabel = `${year}年${month + 1}月`;
+      document.querySelector(".brand h1").textContent = `ポムポムプリン収集カレンダー / ${monthLabel}`;
+    }
+    function eventButton(item) {
+      const button = document.createElement("button");
+      button.className = `event-pill ${item.kind}`;
+      button.innerHTML = `<strong>${escapeHtml(item.title)}</strong><span>${escapeHtml(item.kindLabel)} / ${escapeHtml(item.statusLabel)}</span>`;
+      button.addEventListener("click", () => openDetail(item));
+      return button;
+    }
+    function renderAgenda(items) {
+      agenda.innerHTML = "";
+      const scoped = state.selectedDate ? items.filter(item => item.primaryDate === state.selectedDate) : items;
+      const dated = scoped.filter(item => item.primaryDate).sort((a, b) => a.primaryDate.localeCompare(b.primaryDate));
+      const undated = scoped.filter(item => !item.primaryDate);
+      const ordered = [...dated, ...undated].slice(0, 80);
+      agendaTitle.textContent = state.selectedDate ? `${state.selectedDate} の候補` : "候補一覧";
+      agendaSubtitle.textContent = state.selectedDate ? `${ordered.length}件` : "日付が近い順 / 未日付は末尾";
+      if (!ordered.length) {
+        agenda.innerHTML = `<div class="empty">表示できる候補がありません</div>`;
+        return;
+      }
+      ordered.forEach(item => agenda.append(agendaItem(item)));
+    }
+    function agendaItem(item) {
+      const el = document.createElement("article");
+      el.className = "agenda-item";
+      el.innerHTML = `
+        <h3>${escapeHtml(item.title)}</h3>
+        <div class="meta">
+          <span class="tag">${escapeHtml(item.kindLabel)}</span>
+          <span class="tag ${item.status === "needs_review" ? "review" : item.status}">${escapeHtml(item.statusLabel)}</span>
+          <span class="tag">信頼度 ${Math.round(item.confidence * 100)}%</span>
+        </div>
+        <p class="detail-text">${escapeHtml(dateSummary(item))}</p>
+        <p class="detail-text">${escapeHtml(item.sellerOrVenue || item.sourceName || "")}</p>
+      `;
+      el.addEventListener("click", () => openDetail(item));
+      return el;
+    }
+    function openDetail(item) {
+      modalBody.innerHTML = `
+        <h2>${escapeHtml(item.title)}</h2>
+        <div class="meta">
+          <span class="tag">${escapeHtml(item.kindLabel)}</span>
+          <span class="tag ${item.status === "needs_review" ? "review" : item.status}">${escapeHtml(item.statusLabel)}</span>
+          <span class="tag">信頼度 ${Math.round(item.confidence * 100)}%</span>
+        </div>
+        <p class="detail-text">${escapeHtml(dateSummary(item))}</p>
+        <p class="detail-text">${escapeHtml(item.sellerOrVenue || "")}</p>
+        <p class="detail-text">${escapeHtml(item.reviewReason || "")}</p>
+        <p class="detail-text">${escapeHtml(item.notes || "")}</p>
+        ${sourceLinks(item.sourceUrl)}
+      `;
+      detailDialog.showModal();
+    }
+    function dateSummary(item) {
+      const rows = [];
+      if (item.releaseDate) rows.push(`発売日: ${item.releaseDate}`);
+      if (item.startDate || item.endDate) rows.push(`期間: ${item.startDate || "未定"} - ${item.endDate || "未定"}`);
+      if (item.reservationStart) rows.push(`予約開始: ${item.reservationStart}`);
+      return rows.join(" / ") || "日付未確定";
+    }
+    function sourceLinks(value) {
+      if (!value) return "";
+      return value.split(" | ").map(url => `<a class="source-link" href="${escapeAttr(url)}" target="_blank" rel="noreferrer">ソースを開く</a>`).join("<br>");
+    }
+    function escapeHtml(value) {
+      return String(value || "").replace(/[&<>"']/g, char => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[char]));
+    }
+    function escapeAttr(value) { return escapeHtml(value).replace(/`/g, "&#96;"); }
+  </script>
+</body>
+</html>
