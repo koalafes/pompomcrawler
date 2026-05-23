@@ -198,7 +198,7 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool) -> st
     .toolbar {{
       grid-column: 1 / -1;
       display: grid;
-      grid-template-columns: minmax(220px, 1fr) repeat(2, minmax(150px, 190px)) auto;
+      grid-template-columns: minmax(170px, 240px);
       gap: 12px;
       align-items: center;
       padding: 12px;
@@ -231,7 +231,7 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool) -> st
       color: var(--cocoa);
     }}
     .stats {{
-      display: grid;
+      display: none;
       grid-template-columns: repeat(4, minmax(0, 1fr));
       gap: 10px;
       grid-column: 1 / -1;
@@ -281,7 +281,7 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool) -> st
       display: grid;
       grid-template-columns: repeat(7, minmax(0, 1fr));
     }}
-    .mobile-schedule {{
+    .mobile-outlook {{
       display: none;
     }}
     .day {{
@@ -456,47 +456,107 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool) -> st
       color: var(--muted);
       text-align: center;
     }}
-    .mobile-day-card {{
-      border: 1px solid rgba(122, 75, 39, .13);
+    .mobile-outlook-panel {{
       border-radius: 8px;
       background: rgba(255, 253, 245, .92);
       box-shadow: 0 10px 24px rgba(122, 75, 39, .08);
       overflow: hidden;
+      border: 1px solid rgba(122, 75, 39, .13);
     }}
-    .mobile-day-card.is-today {{
-      border-color: var(--mint);
-      box-shadow: 0 12px 30px rgba(71, 185, 169, .18);
-    }}
-    .mobile-day-head {{
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      padding: 12px 14px;
+    .mobile-weekdays {{
+      display: grid;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
       background: linear-gradient(90deg, #fff0bf, #e7f8f4);
+      border-bottom: 1px solid rgba(122, 75, 39, .12);
+    }}
+    .mobile-weekdays span {{
+      min-height: 30px;
+      display: grid;
+      place-items: center;
       color: var(--caramel);
+      font-size: 11px;
       font-weight: 900;
     }}
-    .mobile-day-head span:first-child {{
-      min-width: 0;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
+    .mobile-grid {{
+      display: grid;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
     }}
-    .mobile-day-count {{
-      min-width: 32px;
-      height: 28px;
+    .mobile-day {{
+      min-height: 54px;
+      padding: 5px 3px;
+      border: 0;
+      border-right: 1px solid rgba(122, 75, 39, .09);
+      border-bottom: 1px solid rgba(122, 75, 39, .09);
+      background: rgba(255, 255, 250, .92);
+      color: var(--cocoa);
+      text-align: center;
+      cursor: pointer;
+    }}
+    .mobile-day:nth-child(7n) {{ border-right: 0; }}
+    .mobile-day.is-muted {{
+      background: rgba(255, 248, 228, .52);
+      color: #a68b75;
+    }}
+    .mobile-day.is-today {{
+      background: linear-gradient(180deg, #fff2b7, #e7f9f4);
+      box-shadow: inset 0 0 0 2px var(--mint);
+    }}
+    .mobile-day.is-selected {{
+      background: #fff0bf;
+      box-shadow: inset 0 0 0 2px var(--caramel);
+    }}
+    .mobile-day-number {{
+      display: inline-grid;
+      place-items: center;
+      width: 24px;
+      height: 24px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 900;
+    }}
+    .mobile-day.is-today .mobile-day-number {{
+      background: var(--caramel);
+      color: #fff;
+    }}
+    .mobile-day-dots {{
+      height: 12px;
+      margin-top: 3px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+    }}
+    .mobile-dot {{
+      width: 6px;
+      height: 6px;
+      border-radius: 999px;
+      background: var(--mint);
+    }}
+    .mobile-dot.product {{ background: var(--caramel); }}
+    .mobile-dot.event {{ background: var(--sky); }}
+    .mobile-dot.campaign {{ background: var(--berry); }}
+    .mobile-dot.reservation {{ background: var(--leaf); }}
+    .mobile-day-more {{
+      min-width: 14px;
+      height: 14px;
       display: inline-grid;
       place-items: center;
       border-radius: 999px;
-      background: #fffdf5;
-      color: #167c70;
-      font-size: 13px;
+      background: var(--caramel);
+      color: #fff;
+      font-size: 9px;
+      font-weight: 900;
     }}
-    .mobile-events {{
+    .mobile-selected {{
       display: grid;
-      gap: 8px;
-      padding: 10px;
+      gap: 10px;
+      margin-top: 12px;
+    }}
+    .mobile-selected-head {{
+      color: var(--caramel);
+      font-size: 15px;
+      font-weight: 900;
+      padding: 0 2px;
     }}
     .mobile-event {{
       width: 100%;
@@ -574,16 +634,13 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool) -> st
         padding: 10px;
         gap: 8px;
       }}
-      .toolbar .field:first-child {{
-        order: -1;
-      }}
       .field {{
         min-height: 48px;
       }}
       .field span {{
         min-width: 34px;
       }}
-      .stats {{ grid-template-columns: 1fr; }}
+      .stats {{ display: none; }}
       .stat {{
         display: flex;
         align-items: center;
@@ -596,7 +653,7 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool) -> st
       .calendar-panel {{
         display: none;
       }}
-      .mobile-schedule {{
+      .mobile-outlook {{
         display: grid;
         gap: 12px;
       }}
@@ -633,22 +690,19 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool) -> st
     </header>
     <main class="layout">
       <section class="toolbar" aria-label="絞り込み">
-        <label class="field"><span>検索</span><input id="searchInput" type="search" placeholder="タイトル、会場、ソース"></label>
         <label class="field"><span>種別</span><select id="kindFilter"><option value="all">すべて</option></select></label>
-        <label class="field"><span>状態</span><select id="statusFilter"><option value="all">すべて</option></select></label>
-        <button class="text-button" id="resetButton">リセット</button>
-      </section>
-      <section class="stats" aria-label="集計">
-        <div class="stat"><strong id="statTotal">0</strong><span>表示中</span></div>
-        <div class="stat"><strong id="statReview">0</strong><span>確認待ち</span></div>
-        <div class="stat"><strong id="statConfirmed">0</strong><span>確認済み</span></div>
-        <div class="stat"><strong id="statUndated">0</strong><span>日付未確定</span></div>
       </section>
       <section class="calendar-panel" aria-label="月間カレンダー">
         <div class="calendar-head" id="calendarTitle"></div>
         <div class="calendar-grid" id="calendarGrid"></div>
       </section>
-      <section class="mobile-schedule" id="mobileSchedule" aria-label="スマホ用予定一覧"></section>
+      <section class="mobile-outlook" id="mobileOutlook" aria-label="スマホ用予定カレンダー">
+        <div class="mobile-outlook-panel">
+          <div class="mobile-weekdays" id="mobileWeekdays"></div>
+          <div class="mobile-grid" id="mobileGrid"></div>
+        </div>
+        <div class="mobile-selected" id="mobileSelected"></div>
+      </section>
       <aside class="side-panel" aria-label="詳細一覧">
         <div class="side-header">
           <h2 id="agendaTitle">これからの予定</h2>
@@ -666,19 +720,18 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool) -> st
     const ITEMS = {data_json};
     const state = {{
       current: initialMonth(ITEMS),
-      query: "",
       kind: "all",
-      status: "all",
       selectedDate: ""
     }};
     const weekdays = ["日", "月", "火", "水", "木", "金", "土"];
     const kindLabels = {json.dumps(KIND_LABELS, ensure_ascii=False)};
-    const statusLabels = {json.dumps(STATUS_LABELS, ensure_ascii=False)};
 
     const grid = document.getElementById("calendarGrid");
     const title = document.getElementById("calendarTitle");
     const agenda = document.getElementById("agenda");
-    const mobileSchedule = document.getElementById("mobileSchedule");
+    const mobileWeekdays = document.getElementById("mobileWeekdays");
+    const mobileGrid = document.getElementById("mobileGrid");
+    const mobileSelected = document.getElementById("mobileSelected");
     const agendaTitle = document.getElementById("agendaTitle");
     const agendaSubtitle = document.getElementById("agendaSubtitle");
     const detailDialog = document.getElementById("detailDialog");
@@ -691,26 +744,8 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool) -> st
       state.selectedDate = isoDate(new Date());
       render();
     }});
-    document.getElementById("resetButton").addEventListener("click", () => {{
-      state.query = "";
-      state.kind = "all";
-      state.status = "all";
-      state.selectedDate = "";
-      document.getElementById("searchInput").value = "";
-      document.getElementById("kindFilter").value = "all";
-      document.getElementById("statusFilter").value = "all";
-      render();
-    }});
-    document.getElementById("searchInput").addEventListener("input", event => {{
-      state.query = event.target.value.trim().toLowerCase();
-      render();
-    }});
     document.getElementById("kindFilter").addEventListener("change", event => {{
       state.kind = event.target.value;
-      render();
-    }});
-    document.getElementById("statusFilter").addEventListener("change", event => {{
-      state.status = event.target.value;
       render();
     }});
     document.getElementById("closeDialog").addEventListener("click", () => detailDialog.close());
@@ -737,16 +772,11 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool) -> st
     }}
     function fillFilters() {{
       const kindFilter = document.getElementById("kindFilter");
-      const statusFilter = document.getElementById("statusFilter");
       Object.entries(kindLabels).forEach(([value, label]) => kindFilter.append(new Option(label, value)));
-      Object.entries(statusLabels).forEach(([value, label]) => statusFilter.append(new Option(label, value)));
     }}
     function filteredItems() {{
       return ITEMS.filter(item => {{
-        const text = [item.title, item.sellerOrVenue, item.sourceName, item.reviewReason, item.notes].join(" ").toLowerCase();
-        return (state.kind === "all" || item.kind === state.kind)
-          && (state.status === "all" || item.status === state.status)
-          && (!state.query || text.includes(state.query));
+        return item.status !== "excluded" && (state.kind === "all" || item.kind === state.kind);
       }});
     }}
     function render() {{
@@ -754,13 +784,10 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool) -> st
       renderStats(items);
       renderCalendar(items);
       renderAgenda(items);
-      renderMobileSchedule(items);
+      renderMobileOutlook(items);
     }}
     function renderStats(items) {{
-      document.getElementById("statTotal").textContent = items.length;
-      document.getElementById("statReview").textContent = items.filter(item => item.status === "needs_review").length;
-      document.getElementById("statConfirmed").textContent = items.filter(item => item.status === "confirmed").length;
-      document.getElementById("statUndated").textContent = items.filter(item => !item.primaryDate).length;
+      return;
     }}
     function renderCalendar(items) {{
       title.innerHTML = "";
@@ -815,7 +842,7 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool) -> st
     function eventButton(item) {{
       const button = document.createElement("button");
       button.className = `event-pill ${{item.kind}}`;
-      button.innerHTML = `<strong>${{escapeHtml(item.title)}}</strong><span>${{escapeHtml(item.kindLabel)}} / ${{escapeHtml(item.statusLabel)}}</span>`;
+      button.innerHTML = `<strong>${{escapeHtml(item.title)}}</strong><span>${{escapeHtml(item.kindLabel)}} / ${{escapeHtml(dateSummary(item))}}</span>`;
       button.addEventListener("click", () => openDetail(item));
       return button;
     }}
@@ -833,24 +860,34 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool) -> st
       }}
       ordered.forEach(item => agenda.append(agendaItem(item)));
     }}
-    function renderMobileSchedule(items) {{
-      mobileSchedule.innerHTML = "";
-      const dated = items.filter(item => item.primaryDate).sort((a, b) => a.primaryDate.localeCompare(b.primaryDate));
-      const undated = items.filter(item => !item.primaryDate);
-      const grouped = groupByDate(dated);
-      const today = isoDate(new Date());
-      Object.entries(grouped).forEach(([date, dateItems]) => {{
-        mobileSchedule.append(mobileDayCard(date, dateItems, date === today));
+    function renderMobileOutlook(items) {{
+      mobileWeekdays.innerHTML = "";
+      weekdays.forEach(day => {{
+        const el = document.createElement("span");
+        el.textContent = day;
+        mobileWeekdays.append(el);
       }});
-      if (undated.length) {{
-        mobileSchedule.append(mobileDayCard("日付未確定", undated, false));
+      mobileGrid.innerHTML = "";
+      const grouped = groupByDate(items.filter(item => item.primaryDate));
+      const today = isoDate(new Date());
+      const year = state.current.getFullYear();
+      const month = state.current.getMonth();
+      const first = new Date(year, month, 1);
+      const start = new Date(year, month, 1 - first.getDay());
+      const visibleStart = isoDate(start);
+      const visibleEnd = isoDate(new Date(start.getFullYear(), start.getMonth(), start.getDate() + 41));
+      if (!state.selectedDate || state.selectedDate < visibleStart || state.selectedDate > visibleEnd) {{
+        state.selectedDate = year === new Date().getFullYear() && month === new Date().getMonth()
+          ? today
+          : isoDate(new Date(year, month, 1));
       }}
-      if (!mobileSchedule.children.length) {{
-        const empty = document.createElement("div");
-        empty.className = "empty";
-        empty.textContent = "表示できる予定がありません";
-        mobileSchedule.append(empty);
+      for (let index = 0; index < 42; index += 1) {{
+        const day = new Date(start.getFullYear(), start.getMonth(), start.getDate() + index);
+        const dayIso = isoDate(day);
+        const dayItems = grouped[dayIso] || [];
+        mobileGrid.append(mobileDayButton(day, dayIso, dayItems, day.getMonth() !== month, dayIso === today));
       }}
+      renderMobileSelected(items);
     }}
     function groupByDate(items) {{
       return items.reduce((groups, item) => {{
@@ -860,18 +897,40 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool) -> st
         return groups;
       }}, {{}});
     }}
-    function mobileDayCard(date, items, isToday) {{
-      const card = document.createElement("article");
-      card.className = `mobile-day-card${{isToday ? " is-today" : ""}}`;
-      const head = document.createElement("div");
-      head.className = "mobile-day-head";
-      head.innerHTML = `<span>${{escapeHtml(formatMobileDate(date, isToday))}}</span><span class="mobile-day-count">${{items.length}}</span>`;
-      card.append(head);
-      const list = document.createElement("div");
-      list.className = "mobile-events";
-      items.forEach(item => list.append(mobileEventButton(item)));
-      card.append(list);
-      return card;
+    function mobileDayButton(day, dayIso, items, isMuted, isToday) {{
+      const button = document.createElement("button");
+      button.className = "mobile-day";
+      if (isMuted) button.classList.add("is-muted");
+      if (isToday) button.classList.add("is-today");
+      if (state.selectedDate === dayIso) button.classList.add("is-selected");
+      button.innerHTML = `<span class="mobile-day-number">${{day.getDate()}}</span>${{mobileDots(items)}}`;
+      button.addEventListener("click", () => {{
+        state.selectedDate = dayIso;
+        render();
+      }});
+      return button;
+    }}
+    function mobileDots(items) {{
+      if (!items.length) return `<span class="mobile-day-dots"></span>`;
+      const dots = items.slice(0, 3).map(item => `<span class="mobile-dot ${{escapeAttr(item.kind)}}"></span>`).join("");
+      const more = items.length > 3 ? `<span class="mobile-day-more">+${{items.length - 3}}</span>` : "";
+      return `<span class="mobile-day-dots">${{dots}}${{more}}</span>`;
+    }}
+    function renderMobileSelected(items) {{
+      mobileSelected.innerHTML = "";
+      const selectedItems = items.filter(item => item.primaryDate === state.selectedDate);
+      const title = document.createElement("div");
+      title.className = "mobile-selected-head";
+      title.textContent = formatMobileDate(state.selectedDate, state.selectedDate === isoDate(new Date()));
+      mobileSelected.append(title);
+      if (!selectedItems.length) {{
+        const empty = document.createElement("div");
+        empty.className = "empty";
+        empty.textContent = "この日の予定はまだありません";
+        mobileSelected.append(empty);
+        return;
+      }}
+      selectedItems.forEach(item => mobileSelected.append(mobileEventButton(item)));
     }}
     function mobileEventButton(item) {{
       const button = document.createElement("button");
@@ -881,7 +940,7 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool) -> st
       return button;
     }}
     function formatMobileDate(value, isToday) {{
-      if (value === "日付未確定") return value;
+      if (!value) return "日付未確定";
       const date = parseLocalDate(value);
       const label = `${{date.getMonth() + 1}}/${{date.getDate()}}（${{weekdays[date.getDay()]}}）`;
       return isToday ? `${{label}} 今日` : label;
@@ -893,7 +952,6 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool) -> st
         <h3>${{escapeHtml(item.title)}}</h3>
         <div class="meta">
           <span class="tag">${{escapeHtml(item.kindLabel)}}</span>
-          <span class="tag ${{item.status === "needs_review" ? "review" : item.status}}">${{escapeHtml(item.statusLabel)}}</span>
         </div>
         <p class="detail-text">${{escapeHtml(dateSummary(item))}}</p>
         <p class="detail-text">${{escapeHtml(item.sellerOrVenue || item.sourceName || "")}}</p>
@@ -906,11 +964,9 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool) -> st
         <h2>${{escapeHtml(item.title)}}</h2>
         <div class="meta">
           <span class="tag">${{escapeHtml(item.kindLabel)}}</span>
-          <span class="tag ${{item.status === "needs_review" ? "review" : item.status}}">${{escapeHtml(item.statusLabel)}}</span>
         </div>
         <p class="detail-text">${{escapeHtml(dateSummary(item))}}</p>
         <p class="detail-text">${{escapeHtml(item.sellerOrVenue || "")}}</p>
-        <p class="detail-text">${{escapeHtml(item.reviewReason || "")}}</p>
         <p class="detail-text">${{escapeHtml(item.notes || "")}}</p>
         ${{sourceLinks(item.sourceUrl)}}
       `;
