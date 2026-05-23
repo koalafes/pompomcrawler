@@ -27,4 +27,4 @@ def test_export_schedule_writes_csv(tmp_path: Path):
     assert xlsx_path is None or xlsx_path.exists()
     assert html_path.exists()
     assert "ポムポムプリン イベント" in csv_path.read_text(encoding="utf-8-sig")
-    assert "ポムポムプリン収集カレンダー" in html_path.read_text(encoding="utf-8")
+    assert "ポムポムプリン予定帳" in html_path.read_text(encoding="utf-8")

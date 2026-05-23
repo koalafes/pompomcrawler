@@ -79,28 +79,34 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool) -> st
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>ポムポムプリン収集カレンダー</title>
+  <title>ポムポムプリン予定帳</title>
   <style>
     :root {{
       color-scheme: light;
-      --bg: #f7f5ef;
-      --surface: #ffffff;
-      --ink: #25211c;
-      --muted: #6d665d;
-      --line: #ded8ce;
-      --accent: #0f766e;
-      --accent-soft: #d7efec;
-      --gold: #e0a92f;
-      --rose: #cf5b73;
-      --blue: #3b6ea8;
-      --green: #3d8b5b;
-      --shadow: 0 16px 40px rgba(37, 33, 28, .08);
+      --page: #fff8e6;
+      --cream: #fffdf5;
+      --custard: #ffe08a;
+      --custard-soft: #fff0bd;
+      --caramel: #7a4b27;
+      --cocoa: #352417;
+      --muted: #7d6858;
+      --line: #ead7b3;
+      --mint: #47b9a9;
+      --mint-soft: #e1f7f2;
+      --berry: #f57b98;
+      --sky: #74b7e8;
+      --leaf: #7fb96d;
+      --lavender: #b79be8;
+      --shadow: 0 18px 44px rgba(92, 60, 31, .13);
     }}
     * {{ box-sizing: border-box; }}
     body {{
       margin: 0;
-      background: var(--bg);
-      color: var(--ink);
+      background:
+        radial-gradient(circle at 12px 12px, rgba(122, 75, 39, .08) 0 2px, transparent 2.5px),
+        linear-gradient(135deg, #fff7d7 0%, #fffaf0 44%, #e9f8f4 100%);
+      background-size: 28px 28px, auto;
+      color: var(--cocoa);
       font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       line-height: 1.5;
     }}
@@ -111,29 +117,43 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool) -> st
       position: sticky;
       top: 0;
       z-index: 20;
-      background: rgba(247, 245, 239, .92);
-      border-bottom: 1px solid var(--line);
-      backdrop-filter: blur(16px);
+      background: rgba(255, 248, 230, .86);
+      border-bottom: 1px solid rgba(122, 75, 39, .12);
+      backdrop-filter: blur(18px) saturate(1.18);
     }}
     .topbar-inner {{
       width: min(1440px, 100%);
       margin: 0 auto;
-      padding: 14px 20px;
+      padding: 18px 20px;
       display: grid;
-      grid-template-columns: minmax(220px, 1fr) auto;
+      grid-template-columns: minmax(260px, 1fr) auto;
       gap: 16px;
       align-items: center;
     }}
+    .brand {{
+      display: grid;
+      grid-template-columns: 64px minmax(0, 1fr);
+      gap: 14px;
+      align-items: center;
+      min-width: 0;
+    }}
+    .pudding-mark {{
+      width: 64px;
+      height: 64px;
+      filter: drop-shadow(0 12px 18px rgba(122, 75, 39, .18));
+    }}
     .brand h1 {{
       margin: 0;
-      font-size: clamp(20px, 2.2vw, 30px);
+      font-size: clamp(22px, 2.4vw, 34px);
       letter-spacing: 0;
       line-height: 1.15;
+      color: var(--caramel);
     }}
     .brand p {{
-      margin: 4px 0 0;
+      margin: 6px 0 0;
       color: var(--muted);
       font-size: 13px;
+      font-weight: 700;
     }}
     .month-controls {{
       display: flex;
@@ -142,61 +162,73 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool) -> st
       justify-content: flex-end;
     }}
     .icon-button, .text-button {{
-      min-height: 40px;
-      border: 1px solid var(--line);
-      background: var(--surface);
-      color: var(--ink);
+      min-height: 42px;
+      border: 1px solid rgba(122, 75, 39, .16);
+      background: rgba(255, 253, 245, .94);
+      color: var(--caramel);
       cursor: pointer;
-      box-shadow: 0 1px 0 rgba(37, 33, 28, .04);
+      box-shadow: 0 8px 18px rgba(122, 75, 39, .09);
     }}
     .icon-button {{
-      width: 40px;
+      width: 42px;
       display: inline-grid;
       place-items: center;
       border-radius: 8px;
-      font-size: 20px;
+      font-size: 24px;
       line-height: 1;
     }}
     .text-button {{
       border-radius: 8px;
-      padding: 0 14px;
-      font-weight: 700;
+      padding: 0 16px;
+      font-weight: 900;
     }}
-    .icon-button:hover, .text-button:hover {{ border-color: var(--accent); }}
+    .icon-button:hover, .text-button:hover {{
+      border-color: var(--mint);
+      transform: translateY(-1px);
+    }}
     .layout {{
       width: min(1440px, 100%);
       margin: 0 auto;
-      padding: 18px 20px 32px;
+      padding: 22px 20px 38px;
       display: grid;
       grid-template-columns: minmax(0, 1fr) 360px;
-      gap: 18px;
+      gap: 20px;
       align-items: start;
     }}
     .toolbar {{
       grid-column: 1 / -1;
       display: grid;
       grid-template-columns: minmax(220px, 1fr) repeat(2, minmax(150px, 190px)) auto;
-      gap: 10px;
+      gap: 12px;
       align-items: center;
+      padding: 12px;
+      background: rgba(255, 253, 245, .68);
+      border: 1px solid rgba(122, 75, 39, .12);
+      border-radius: 8px;
+      box-shadow: 0 12px 30px rgba(122, 75, 39, .08);
     }}
     .field {{
       display: flex;
       align-items: center;
       gap: 8px;
-      min-height: 42px;
-      padding: 0 12px;
-      border: 1px solid var(--line);
-      background: var(--surface);
+      min-height: 46px;
+      padding: 0 14px;
+      border: 1px solid rgba(122, 75, 39, .13);
+      background: #fffef9;
       border-radius: 8px;
     }}
-    .field span {{ color: var(--muted); }}
+    .field span {{
+      color: var(--caramel);
+      font-size: 12px;
+      font-weight: 900;
+    }}
     .field input, .field select {{
       width: 100%;
       min-width: 0;
       border: 0;
       outline: 0;
       background: transparent;
-      color: var(--ink);
+      color: var(--cocoa);
     }}
     .stats {{
       display: grid;
@@ -205,17 +237,29 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool) -> st
       grid-column: 1 / -1;
     }}
     .stat {{
-      background: var(--surface);
-      border: 1px solid var(--line);
+      background: rgba(255, 253, 245, .76);
+      border: 1px solid rgba(122, 75, 39, .1);
       border-radius: 8px;
-      padding: 12px;
+      padding: 13px 14px;
       min-width: 0;
+      box-shadow: 0 10px 24px rgba(122, 75, 39, .07);
     }}
-    .stat strong {{ display: block; font-size: 24px; line-height: 1; }}
-    .stat span {{ display: block; margin-top: 4px; color: var(--muted); font-size: 12px; }}
+    .stat strong {{
+      display: block;
+      font-size: 26px;
+      line-height: 1;
+      color: var(--caramel);
+    }}
+    .stat span {{
+      display: block;
+      margin-top: 5px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+    }}
     .calendar-panel, .side-panel {{
-      background: var(--surface);
-      border: 1px solid var(--line);
+      background: rgba(255, 253, 245, .92);
+      border: 1px solid rgba(122, 75, 39, .13);
       border-radius: 8px;
       box-shadow: var(--shadow);
       overflow: hidden;
@@ -223,14 +267,14 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool) -> st
     .calendar-head {{
       display: grid;
       grid-template-columns: repeat(7, minmax(0, 1fr));
-      border-bottom: 1px solid var(--line);
-      background: #f2eee5;
+      border-bottom: 1px solid rgba(122, 75, 39, .13);
+      background: linear-gradient(90deg, #ffe9a4, #dff7f0);
     }}
     .weekday {{
-      padding: 10px 8px;
-      color: var(--muted);
+      padding: 11px 8px;
+      color: var(--caramel);
       font-size: 12px;
-      font-weight: 800;
+      font-weight: 900;
       text-align: center;
     }}
     .calendar-grid {{
@@ -238,18 +282,21 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool) -> st
       grid-template-columns: repeat(7, minmax(0, 1fr));
     }}
     .day {{
-      min-height: 132px;
-      padding: 8px;
-      border-right: 1px solid var(--line);
-      border-bottom: 1px solid var(--line);
-      background: #fffdfa;
+      min-height: 136px;
+      padding: 9px;
+      border-right: 1px solid rgba(122, 75, 39, .1);
+      border-bottom: 1px solid rgba(122, 75, 39, .1);
+      background: rgba(255, 255, 250, .94);
       overflow: hidden;
     }}
     .day:nth-child(7n) {{ border-right: 0; }}
-    .day.is-muted {{ background: #f6f3ed; color: #8b8479; }}
+    .day.is-muted {{
+      background: rgba(255, 248, 228, .55);
+      color: #a68b75;
+    }}
     .day.is-today {{
-      background: #eef8f6;
-      box-shadow: inset 0 0 0 3px var(--accent);
+      background: linear-gradient(180deg, #fff2b7, #e7f9f4);
+      box-shadow: inset 0 0 0 3px var(--mint), inset 0 0 0 6px rgba(255, 255, 255, .8);
     }}
     .day-number {{
       display: flex;
@@ -265,9 +312,9 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool) -> st
       display: inline-grid;
       place-items: center;
       border-radius: 999px;
-      background: var(--accent);
+      background: var(--caramel);
       color: #fff;
-      box-shadow: 0 4px 12px rgba(15, 118, 110, .24);
+      box-shadow: 0 6px 14px rgba(122, 75, 39, .24);
     }}
     .day-count {{
       min-width: 22px;
@@ -275,9 +322,10 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool) -> st
       display: inline-grid;
       place-items: center;
       border-radius: 999px;
-      background: var(--accent-soft);
-      color: var(--accent);
+      background: var(--mint-soft);
+      color: #167c70;
       font-size: 12px;
+      font-weight: 900;
     }}
     .event-list {{
       display: grid;
@@ -287,15 +335,16 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool) -> st
       display: block;
       width: 100%;
       min-height: 32px;
-      padding: 5px 7px;
+      padding: 6px 8px;
       border: 0;
-      border-left: 4px solid var(--accent);
+      border-left: 4px solid var(--mint);
       border-radius: 6px;
-      background: #eef8f6;
-      color: var(--ink);
+      background: var(--mint-soft);
+      color: var(--cocoa);
       text-align: left;
       cursor: pointer;
       overflow: hidden;
+      box-shadow: 0 4px 10px rgba(53, 36, 23, .05);
     }}
     .event-pill strong {{
       display: block;
@@ -313,15 +362,15 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool) -> st
       color: var(--muted);
       font-size: 11px;
     }}
-    .event-pill.product {{ border-left-color: var(--gold); background: #fff5d8; }}
-    .event-pill.event {{ border-left-color: var(--blue); background: #eaf2fb; }}
-    .event-pill.campaign {{ border-left-color: var(--rose); background: #fdebf0; }}
-    .event-pill.reservation {{ border-left-color: var(--green); background: #eaf7ef; }}
+    .event-pill.product {{ border-left-color: var(--caramel); background: #fff0bf; }}
+    .event-pill.event {{ border-left-color: var(--sky); background: #eaf5ff; }}
+    .event-pill.campaign {{ border-left-color: var(--berry); background: #ffeaf0; }}
+    .event-pill.reservation {{ border-left-color: var(--leaf); background: #ecf8e9; }}
     .more-button {{
       width: 100%;
       border: 0;
       background: transparent;
-      color: var(--accent);
+      color: #167c70;
       cursor: pointer;
       font-weight: 800;
       font-size: 12px;
@@ -330,35 +379,45 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool) -> st
     }}
     .side-panel {{
       position: sticky;
-      top: 92px;
+      top: 104px;
       max-height: calc(100vh - 112px);
       display: flex;
       flex-direction: column;
     }}
     .side-header {{
-      padding: 14px 16px;
-      border-bottom: 1px solid var(--line);
-      background: #f2eee5;
+      padding: 16px;
+      border-bottom: 1px solid rgba(122, 75, 39, .12);
+      background: linear-gradient(135deg, #ffe9a4, #e7f8f4);
     }}
-    .side-header h2 {{ margin: 0; font-size: 18px; letter-spacing: 0; }}
-    .side-header p {{ margin: 4px 0 0; color: var(--muted); font-size: 12px; }}
+    .side-header h2 {{
+      margin: 0;
+      color: var(--caramel);
+      font-size: 18px;
+      letter-spacing: 0;
+    }}
+    .side-header p {{
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+    }}
     .agenda {{
-      padding: 12px;
+      padding: 6px 14px 14px;
       overflow: auto;
-      display: grid;
-      gap: 10px;
     }}
     .agenda-item {{
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      padding: 12px;
-      background: #fffdfa;
+      border-bottom: 1px solid rgba(122, 75, 39, .12);
+      padding: 14px 2px;
+      background: transparent;
+      cursor: pointer;
     }}
+    .agenda-item:last-child {{ border-bottom: 0; }}
     .agenda-item h3 {{
       margin: 0;
       font-size: 15px;
       line-height: 1.35;
       letter-spacing: 0;
+      color: var(--cocoa);
     }}
     .meta {{
       display: flex;
@@ -372,19 +431,19 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool) -> st
       min-height: 24px;
       padding: 0 8px;
       border-radius: 999px;
-      background: #ece7dc;
-      color: var(--ink);
+      background: #fff0bf;
+      color: var(--caramel);
       font-size: 12px;
       font-weight: 700;
     }}
-    .tag.review {{ background: #fff0cc; }}
-    .tag.confirmed {{ background: #dff4e7; }}
-    .tag.excluded {{ background: #ececec; color: #777; }}
+    .tag.review {{ background: #ffe7a1; }}
+    .tag.confirmed {{ background: #dff4e7; color: #2f7652; }}
+    .tag.excluded {{ background: #eee8dc; color: #8d7b68; }}
     .detail-text {{ margin: 0; color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }}
     .source-link {{
       display: inline-block;
       margin-top: 10px;
-      color: var(--accent);
+      color: #167c70;
       font-weight: 800;
       font-size: 13px;
       overflow-wrap: anywhere;
@@ -396,20 +455,20 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool) -> st
     }}
     dialog {{
       width: min(720px, calc(100vw - 28px));
-      border: 1px solid var(--line);
+      border: 1px solid rgba(122, 75, 39, .16);
       border-radius: 8px;
       padding: 0;
       box-shadow: var(--shadow);
     }}
-    dialog::backdrop {{ background: rgba(37, 33, 28, .34); }}
+    dialog::backdrop {{ background: rgba(53, 36, 23, .34); }}
     .modal-body {{ padding: 18px; }}
     .modal-body h2 {{ margin: 0 0 10px; font-size: 22px; letter-spacing: 0; }}
     .modal-actions {{
       display: flex;
       justify-content: flex-end;
       padding: 12px 18px;
-      border-top: 1px solid var(--line);
-      background: #f7f5ef;
+      border-top: 1px solid rgba(122, 75, 39, .12);
+      background: #fff8e6;
     }}
     @media (max-width: 980px) {{
       .topbar-inner, .layout {{ padding-left: 12px; padding-right: 12px; }}
@@ -420,6 +479,8 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool) -> st
       .day {{ min-height: 112px; padding: 6px; }}
     }}
     @media (max-width: 640px) {{
+      .brand {{ grid-template-columns: 52px minmax(0, 1fr); }}
+      .pudding-mark {{ width: 52px; height: 52px; }}
       .calendar-panel {{ overflow-x: auto; }}
       .calendar-head, .calendar-grid {{ min-width: 760px; }}
       .stats {{ grid-template-columns: 1fr; }}
@@ -432,8 +493,18 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool) -> st
     <header class="topbar">
       <div class="topbar-inner">
         <div class="brand">
-          <h1>ポムポムプリン収集カレンダー</h1>
-          <p>{escape(generated_at)} 生成 / 対象: {escape(window_text)} / 確認待ちを優先して整理</p>
+          <svg class="pudding-mark" viewBox="0 0 96 96" role="img" aria-label="pudding calendar mark">
+            <path d="M20 38c0-17 12-28 28-28s28 11 28 28v24c0 13-12 24-28 24S20 75 20 62V38Z" fill="#FFE08A"/>
+            <path d="M24 35c3-13 12-20 24-20s21 7 24 20c-6 5-12 5-18 1-5-3-8-3-13 0-6 4-11 4-17-1Z" fill="#7A4B27"/>
+            <circle cx="38" cy="51" r="3.5" fill="#352417"/>
+            <circle cx="58" cy="51" r="3.5" fill="#352417"/>
+            <path d="M42 63c4 4 8 4 12 0" fill="none" stroke="#352417" stroke-width="3" stroke-linecap="round"/>
+            <path d="M28 79h40" stroke="#47B9A9" stroke-width="5" stroke-linecap="round"/>
+          </svg>
+          <div>
+            <h1>ポムポムプリン予定帳</h1>
+            <p>{escape(generated_at)} / {escape(window_text)}</p>
+          </div>
         </div>
         <div class="month-controls" aria-label="月移動">
           <button class="icon-button" id="prevMonth" title="前の月" aria-label="前の月">‹</button>
@@ -461,8 +532,8 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool) -> st
       </section>
       <aside class="side-panel" aria-label="詳細一覧">
         <div class="side-header">
-          <h2 id="agendaTitle">一覧</h2>
-          <p id="agendaSubtitle">日付が近い順</p>
+          <h2 id="agendaTitle">これからの予定</h2>
+          <p id="agendaSubtitle">気になる予定をチェック</p>
         </div>
         <div class="agenda" id="agenda"></div>
       </aside>
@@ -618,7 +689,7 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool) -> st
         grid.append(cell);
       }}
       const monthLabel = `${{year}}年${{month + 1}}月`;
-      document.querySelector(".brand h1").textContent = `ポムポムプリン収集カレンダー / ${{monthLabel}}`;
+      document.querySelector(".brand h1").textContent = `ポムポムプリン予定帳 / ${{monthLabel}}`;
     }}
     function eventButton(item) {{
       const button = document.createElement("button");
@@ -633,8 +704,8 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool) -> st
       const dated = scoped.filter(item => item.primaryDate).sort((a, b) => a.primaryDate.localeCompare(b.primaryDate));
       const undated = scoped.filter(item => !item.primaryDate);
       const ordered = [...dated, ...undated].slice(0, 80);
-      agendaTitle.textContent = state.selectedDate ? `${{state.selectedDate}} の候補` : "候補一覧";
-      agendaSubtitle.textContent = state.selectedDate ? `${{ordered.length}}件` : "日付が近い順 / 未日付は末尾";
+      agendaTitle.textContent = state.selectedDate ? `${{state.selectedDate}} の予定` : "これからの予定";
+      agendaSubtitle.textContent = state.selectedDate ? `${{ordered.length}}件` : "日付が近い順";
       if (!ordered.length) {{
         agenda.innerHTML = `<div class="empty">表示できる候補がありません</div>`;
         return;
@@ -649,7 +720,6 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool) -> st
         <div class="meta">
           <span class="tag">${{escapeHtml(item.kindLabel)}}</span>
           <span class="tag ${{item.status === "needs_review" ? "review" : item.status}}">${{escapeHtml(item.statusLabel)}}</span>
-          <span class="tag">信頼度 ${{Math.round(item.confidence * 100)}}%</span>
         </div>
         <p class="detail-text">${{escapeHtml(dateSummary(item))}}</p>
         <p class="detail-text">${{escapeHtml(item.sellerOrVenue || item.sourceName || "")}}</p>
@@ -663,7 +733,6 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool) -> st
         <div class="meta">
           <span class="tag">${{escapeHtml(item.kindLabel)}}</span>
           <span class="tag ${{item.status === "needs_review" ? "review" : item.status}}">${{escapeHtml(item.statusLabel)}}</span>
-          <span class="tag">信頼度 ${{Math.round(item.confidence * 100)}}%</span>
         </div>
         <p class="detail-text">${{escapeHtml(dateSummary(item))}}</p>
         <p class="detail-text">${{escapeHtml(item.sellerOrVenue || "")}}</p>
