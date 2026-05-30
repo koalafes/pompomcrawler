@@ -45,6 +45,7 @@ API消費を抑えて試す場合:
 ```bash
 pompomcrawler extract --limit 5
 pompomcrawler extract --last 68
+pompomcrawler extract --reprocess
 pompomcrawler extract --no-openai
 pompomcrawler extract --no-openai --replace
 ```
@@ -58,3 +59,11 @@ pompomcrawler extract --no-openai --replace
 5. `export` で `outputs/pompompurin_schedule.csv`、`outputs/pompompurin_schedule.xlsx`、`outputs/pompompurin_calendar.html` を出力します。
 
 最終確認は `status` 列を `confirmed` または `excluded` に更新して運用してください。
+
+## 再収集時の扱い
+
+- `crawl` / `import-manual` は、同じ URL の raw document を重複追記しません。
+- 同じ URL で本文・タイトルなどが変わっている場合は、その URL の raw document を更新します。
+- 通常の `extract` は、既に `schedule_items.jsonl` に出典 URL がある raw document を再処理しません。
+- 既存分も再抽出したい場合は `extract --reprocess` を使います。
+- `extract --replace` は候補ファイル全体を作り直すため、手で更新した `confirmed` / `excluded` を残したい運用では慎重に使ってください。

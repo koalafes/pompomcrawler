@@ -15,6 +15,7 @@ from .storage import (
     append_schedule_items,
     read_raw_documents,
     read_schedule_items,
+    schedule_source_urls,
     write_schedule_items,
 )
 
@@ -32,6 +33,7 @@ def build_parser() -> argparse.ArgumentParser:
     extract_parser.add_argument("--last", type=int, default=0, help="Process only the most recent N raw documents")
     extract_parser.add_argument("--no-openai", action="store_true", help="Use heuristic extraction even if OPENAI_API_KEY is set")
     extract_parser.add_argument("--replace", action="store_true", help="Replace stored schedule items instead of appending")
+    extract_parser.add_argument("--reprocess", action="store_true", help="Reprocess raw documents that already have schedule items")
     export_parser = subparsers.add_parser("export", help="Export merged schedule CSV/XLSX/HTML")
     export_parser.add_argument("--all-history", action="store_true", help="Include old past items instead of the default recent/future window")
     export_parser.add_argument("--past-days", type=int, default=30, help="Past days to include when filtering schedule output")
@@ -76,9 +78,19 @@ def main(argv: list[str] | None = None) -> int:
             docs = docs[-args.last :]
         elif args.limit:
             docs = docs[: args.limit]
+        selected_count = len(docs)
+        if not args.replace and not args.reprocess:
+            processed_urls = schedule_source_urls(read_schedule_items())
+            docs = [doc for doc in docs if doc.url not in processed_urls]
+        if not docs:
+            if selected_count:
+                print(f"No unprocessed raw documents found in {selected_count} selected documents.")
+            else:
+                print("No raw documents found.")
+            return 0
         items = extract_items_from_documents(docs, use_openai=not args.no_openai)
         count = write_schedule_items(items) if args.replace else append_schedule_items(items)
-        print(f"Saved {count} schedule items.")
+        print(f"Processed {len(docs)} raw documents; saved {count} new schedule items.")
         return 0
 
     if args.command == "export":
