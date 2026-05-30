@@ -1222,8 +1222,15 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool, aws_r
     }}
     function renderAgenda(items) {{
       agenda.innerHTML = "";
-      const scoped = state.selectedDate ? items.filter(item => itemOccursOn(item, state.selectedDate)) : items;
-      const dated = scoped.filter(item => item.primaryDate).sort((a, b) => a.primaryDate.localeCompare(b.primaryDate));
+      const today = isoDate(new Date());
+      const scoped = state.selectedDate
+        ? items.filter(item => itemOccursOn(item, state.selectedDate))
+        : upcomingAgendaItems(items, today);
+      const dated = scoped.filter(item => item.agendaDate || item.primaryDate).sort((a, b) => {{
+        const aDate = a.agendaDate || a.primaryDate;
+        const bDate = b.agendaDate || b.primaryDate;
+        return aDate.localeCompare(bDate);
+      }});
       const undated = scoped.filter(item => !item.primaryDate);
       const ordered = [...dated, ...undated].slice(0, 80);
       agendaTitle.textContent = state.selectedDate ? `${{state.selectedDate}} の予定` : "これからの予定";
@@ -1233,6 +1240,17 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool, aws_r
         return;
       }}
       ordered.forEach(item => agenda.append(agendaItem(item)));
+    }}
+    function upcomingAgendaItems(items, today) {{
+      return items
+        .map(item => ({{ ...item, agendaDate: nextKnownDate(item, today) }}))
+        .filter(item => item.agendaDate);
+    }}
+    function nextKnownDate(item, today) {{
+      if (isRangeItem(item) && item.startDate <= today && today <= item.endDate) return today;
+      return [item.releaseDate, item.reservationStart, item.startDate, item.endDate]
+        .filter(value => value && value >= today)
+        .sort()[0] || "";
     }}
     function renderMobileOutlook(items) {{
       mobileWeekdays.innerHTML = "";

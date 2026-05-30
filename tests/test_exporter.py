@@ -38,6 +38,9 @@ def test_export_schedule_writes_csv(tmp_path: Path):
     assert "function itemOccursOn" in html
     assert "開催中の予定" in html
     assert "function appendMobileSelectedSection" in html
+    assert "function upcomingAgendaItems" in html
+    assert "function nextKnownDate" in html
+    assert "item.startDate <= today && today <= item.endDate" in html
 
 
 def test_export_calendar_html_can_use_aws_runtime_without_embedded_items(tmp_path: Path):
