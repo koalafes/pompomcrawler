@@ -1,0 +1,13 @@
+version: 1
+frontend:
+  phases:
+    preBuild:
+      commands:
+        - python3 -m pip install --user -e .
+    build:
+      commands:
+        - PYTHONPATH=src python3 -m pompomcrawler.cli export-html --output-dir docs --filename index.html --aws-runtime
+  artifacts:
+    baseDirectory: docs
+    files:
+      - '**/*'

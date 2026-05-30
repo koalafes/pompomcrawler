@@ -60,6 +60,38 @@ pompomcrawler extract --no-openai --replace
 
 最終確認は `status` 列を `confirmed` または `excluded` に更新して運用してください。
 
+## AWS migration
+
+AWS 版は `infra/` の CDK スタックで、DynamoDB、API Gateway HTTP API、Lambda、Cognito、EventBridge Scheduler を作成します。公開カレンダーは Amplify Hosting から `docs/index.html` を配信し、管理操作は Cognito の `calendar-admin` グループに入ったユーザーだけが実行できます。
+
+```bash
+cd infra
+python3 -m venv .venv
+.venv/bin/python -m pip install -r requirements.txt
+.venv/bin/cdk bootstrap
+.venv/bin/cdk deploy
+```
+
+デプロイ後、CDK 出力の `ApiBaseUrl`、`CognitoDomain`、`CognitoUserPoolClientId` を Amplify の環境変数に設定します。
+
+```bash
+POMPOM_API_BASE_URL=https://... \
+POMPOM_COGNITO_DOMAIN=https://...auth.ap-northeast-1.amazoncognito.com \
+POMPOM_COGNITO_CLIENT_ID=... \
+POMPOM_COGNITO_REDIRECT_URI=https://main.xxxxx.amplifyapp.com/ \
+POMPOM_COGNITO_LOGOUT_URI=https://main.xxxxx.amplifyapp.com/
+```
+
+既存データの初回投入は、CDK 出力のテーブル名を環境変数に入れて実行します。
+
+```bash
+SCHEDULE_ITEMS_TABLE=... DELETED_KEYS_TABLE=... RAW_DOCUMENTS_TABLE=... pompomcrawler migrate-aws
+```
+
+OpenAI API キーは Secrets Manager の `pompomcrawler/openai` に、`{"OPENAI_API_KEY":"...","OPENAI_MODEL":"..."}` 形式で保存してください。
+
+Cognito には管理ユーザーを作成し、`calendar-admin` グループへ追加してください。このグループに入っていないユーザーは削除・復旧APIを実行できません。Amplify の標準URLが確定したら、Cognito User Pool Client の callback/logout URL にそのURLも追加してください。
+
 ## 再収集時の扱い
 
 - `crawl` / `import-manual` は、同じ URL の raw document を重複追記しません。

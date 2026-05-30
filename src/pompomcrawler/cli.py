@@ -9,6 +9,7 @@ from .exporter import export_schedule
 from .extract import extract_items_from_documents
 from .fetchers import fetch_page_source, fetch_rss_source
 from .html_calendar import export_calendar_html
+from .dynamodb_store import DynamoScheduleStore
 from .manual import import_manual_csv
 from .storage import (
     append_raw_documents,
@@ -40,6 +41,10 @@ def build_parser() -> argparse.ArgumentParser:
     html_parser = subparsers.add_parser("export-html", help="Export merged schedule as an HTML calendar")
     html_parser.add_argument("--all-history", action="store_true", help="Include old past items instead of the default recent/future window")
     html_parser.add_argument("--past-days", type=int, default=30, help="Past days to include when filtering calendar output")
+    html_parser.add_argument("--output-dir", default="outputs", help="Directory for generated HTML")
+    html_parser.add_argument("--filename", default="pompompurin_calendar.html", help="Generated HTML filename")
+    html_parser.add_argument("--aws-runtime", action="store_true", help="Load schedule items from AWS API instead of embedding local data")
+    subparsers.add_parser("migrate-aws", help="Migrate local JSONL data to AWS DynamoDB tables")
     return parser
 
 
@@ -112,10 +117,21 @@ def main(argv: list[str] | None = None) -> int:
         items = read_schedule_items()
         html_path = export_calendar_html(
             items,
+            Path(args.output_dir),
             filter_window=not args.all_history,
             past_days=args.past_days,
+            aws_runtime=args.aws_runtime,
+            filename=args.filename,
         )
         print(f"Wrote HTML: {html_path}")
+        return 0
+
+    if args.command == "migrate-aws":
+        store = DynamoScheduleStore.from_env()
+        raw_count = store.put_raw_documents(read_raw_documents())
+        item_count = store.put_schedule_items(read_schedule_items())
+        print(f"Migrated raw documents: {raw_count}")
+        print(f"Migrated schedule items: {item_count}")
         return 0
 
     parser.error("Unknown command")

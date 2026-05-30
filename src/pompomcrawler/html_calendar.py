@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 from datetime import datetime
 from html import escape
 from pathlib import Path
@@ -32,14 +33,24 @@ def export_calendar_html(
     *,
     filter_window: bool = True,
     past_days: int = DEFAULT_PAST_DAYS,
+    aws_runtime: bool = False,
+    filename: str = "pompompurin_calendar.html",
 ) -> Path:
     output_dir.mkdir(parents=True, exist_ok=True)
     merged = merge_duplicates(items)
     if filter_window:
         merged = filter_schedule_window(merged, past_days=past_days)
     payload = [calendar_item(item, index) for index, item in enumerate(merged, start=1)]
-    path = output_dir / "pompompurin_calendar.html"
-    path.write_text(render_html(payload, past_days=past_days, filter_window=filter_window), encoding="utf-8")
+    path = output_dir / filename
+    path.write_text(
+        render_html(
+            payload,
+            past_days=past_days,
+            filter_window=filter_window,
+            aws_runtime=aws_runtime,
+        ),
+        encoding="utf-8",
+    )
     return path
 
 
@@ -71,8 +82,20 @@ def normalize_date(value: str) -> str:
     return parsed.isoformat() if parsed else ""
 
 
-def render_html(items: list[dict], *, past_days: int, filter_window: bool) -> str:
-    data_json = json.dumps(items, ensure_ascii=False)
+def runtime_config() -> dict[str, str]:
+    return {
+        "apiBaseUrl": os.getenv("POMPOM_API_BASE_URL", "__POMPOM_API_BASE_URL__"),
+        "cognitoDomain": os.getenv("POMPOM_COGNITO_DOMAIN", "__POMPOM_COGNITO_DOMAIN__"),
+        "cognitoClientId": os.getenv("POMPOM_COGNITO_CLIENT_ID", "__POMPOM_COGNITO_CLIENT_ID__"),
+        "cognitoRedirectUri": os.getenv("POMPOM_COGNITO_REDIRECT_URI", "__POMPOM_COGNITO_REDIRECT_URI__"),
+        "cognitoLogoutUri": os.getenv("POMPOM_COGNITO_LOGOUT_URI", "__POMPOM_COGNITO_LOGOUT_URI__"),
+    }
+
+
+def render_html(items: list[dict], *, past_days: int, filter_window: bool, aws_runtime: bool = False) -> str:
+    config = runtime_config()
+    data_json = "[]" if aws_runtime else json.dumps(items, ensure_ascii=False)
+    config_json = json.dumps(config, ensure_ascii=False)
     generated_at = datetime.now().strftime("%Y-%m-%d %H:%M")
     window_text = f"直近{past_days}日＋未来" if filter_window else "全期間"
     return f"""<!doctype html>
@@ -193,7 +216,7 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool) -> st
     .toolbar {{
       grid-column: 1 / -1;
       display: grid;
-      grid-template-columns: minmax(170px, 240px);
+      grid-template-columns: minmax(170px, 240px) minmax(0, 1fr);
       gap: 12px;
       align-items: center;
       padding: 12px;
@@ -224,6 +247,22 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool) -> st
       outline: 0;
       background: transparent;
       color: var(--cocoa);
+    }}
+    .auth-controls {{
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      justify-content: flex-end;
+      min-width: 0;
+    }}
+    .auth-status {{
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
     }}
     .stats {{
       display: none;
@@ -739,15 +778,27 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool) -> st
     .modal-body h2 {{ margin: 0 0 10px; font-size: 22px; letter-spacing: 0; }}
     .modal-actions {{
       display: flex;
-      justify-content: flex-end;
+      justify-content: space-between;
+      gap: 8px;
       padding: 12px 18px;
       border-top: 1px solid rgba(122, 75, 39, .12);
       background: #fff8e6;
+    }}
+    .danger-button {{
+      min-height: 42px;
+      border: 1px solid rgba(168, 42, 42, .24);
+      border-radius: 8px;
+      padding: 0 16px;
+      background: #fff1f1;
+      color: #9b2f2f;
+      cursor: pointer;
+      font-weight: 900;
     }}
     @media (max-width: 980px) {{
       .topbar-inner, .layout {{ padding-left: 12px; padding-right: 12px; }}
       .topbar-inner, .layout, .toolbar {{ grid-template-columns: 1fr; }}
       .month-controls {{ justify-content: start; }}
+      .auth-controls {{ justify-content: start; }}
       .stats {{ grid-template-columns: repeat(2, minmax(0, 1fr)); }}
       .side-panel {{ position: static; max-height: none; }}
       .calendar-grid {{
@@ -830,6 +881,11 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool) -> st
     <main class="layout">
       <section class="toolbar" aria-label="絞り込み">
         <label class="field"><span>種別</span><select id="kindFilter"><option value="all">すべて</option></select></label>
+        <div class="auth-controls">
+          <span class="auth-status" id="authStatus"></span>
+          <button class="text-button" id="loginButton" type="button">ログイン</button>
+          <button class="text-button" id="logoutButton" type="button" hidden>ログアウト</button>
+        </div>
       </section>
       <section class="calendar-panel" aria-label="月間カレンダー">
         <div class="calendar-head" id="calendarTitle"></div>
@@ -853,17 +909,24 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool) -> st
   </div>
   <dialog id="detailDialog">
     <div class="modal-body" id="modalBody"></div>
-    <div class="modal-actions"><button class="text-button" id="closeDialog">閉じる</button></div>
+    <div class="modal-actions">
+      <button class="danger-button" id="deleteItemButton" type="button" hidden>削除</button>
+      <button class="text-button" id="closeDialog" type="button">閉じる</button>
+    </div>
   </dialog>
   <script>
-    const ITEMS = {data_json};
+    const CONFIG = {config_json};
+    const FALLBACK_ITEMS = {data_json};
+    let ITEMS = [];
+    let selectedDetailItem = null;
     const state = {{
-      current: initialMonth(ITEMS),
+      current: initialMonth([]),
       kind: "all",
       selectedDate: ""
     }};
     const weekdays = ["日", "月", "火", "水", "木", "金", "土"];
     const kindLabels = {json.dumps(KIND_LABELS, ensure_ascii=False)};
+    const statusLabels = {json.dumps(STATUS_LABELS, ensure_ascii=False)};
 
     const grid = document.getElementById("calendarGrid");
     const title = document.getElementById("calendarTitle");
@@ -875,6 +938,10 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool) -> st
     const agendaSubtitle = document.getElementById("agendaSubtitle");
     const detailDialog = document.getElementById("detailDialog");
     const modalBody = document.getElementById("modalBody");
+    const authStatus = document.getElementById("authStatus");
+    const loginButton = document.getElementById("loginButton");
+    const logoutButton = document.getElementById("logoutButton");
+    const deleteItemButton = document.getElementById("deleteItemButton");
 
     document.getElementById("prevMonth").addEventListener("click", () => shiftMonth(-1));
     document.getElementById("nextMonth").addEventListener("click", () => shiftMonth(1));
@@ -888,9 +955,20 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool) -> st
       render();
     }});
     document.getElementById("closeDialog").addEventListener("click", () => detailDialog.close());
+    loginButton.addEventListener("click", login);
+    logoutButton.addEventListener("click", logout);
+    deleteItemButton.addEventListener("click", deleteSelectedItem);
 
     fillFilters();
-    render();
+    initialize();
+
+    async function initialize() {{
+      await completeLoginIfNeeded();
+      updateAuthControls();
+      ITEMS = await loadItems();
+      state.current = initialMonth(ITEMS);
+      render();
+    }}
 
     function initialMonth(items) {{ return startOfMonth(new Date()); }}
     function startOfMonth(date) {{ return new Date(date.getFullYear(), date.getMonth(), 1); }}
@@ -912,6 +990,145 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool) -> st
     function fillFilters() {{
       const kindFilter = document.getElementById("kindFilter");
       Object.entries(kindLabels).forEach(([value, label]) => kindFilter.append(new Option(label, value)));
+    }}
+    async function loadItems() {{
+      if (!apiBaseUrl()) return FALLBACK_ITEMS.map(normalizeItem);
+      const response = await fetch(`${{apiBaseUrl()}}/items`);
+      if (!response.ok) throw new Error(`Failed to load items: ${{response.status}}`);
+      const payload = await response.json();
+      return (payload.items || []).map(normalizeItem);
+    }}
+    function normalizeItem(item, index = 0) {{
+      const startDate = item.startDate || item.start_date || "";
+      const endDate = item.endDate || item.end_date || "";
+      const releaseDate = item.releaseDate || item.release_date || "";
+      const reservationStart = item.reservationStart || item.reservation_start || "";
+      const kind = item.kind || "other";
+      const status = item.status || "needs_review";
+      return {{
+        id: item.id || index + 1,
+        itemId: item.itemId || item.item_id || "",
+        title: item.title || "",
+        kind,
+        kindLabel: item.kindLabel || kindLabels[kind] || kind,
+        status,
+        statusLabel: item.statusLabel || statusLabels[status] || status,
+        startDate,
+        endDate,
+        releaseDate,
+        reservationStart,
+        primaryDate: item.primaryDate || item.primary_date || firstPresentDate(releaseDate, startDate, reservationStart, endDate),
+        sellerOrVenue: item.sellerOrVenue || item.seller_or_venue || "",
+        sourceUrl: item.sourceUrl || item.source_url || "",
+        imageUrl: item.imageUrl || item.image_url || "",
+        sourceName: item.sourceName || item.source_name || "",
+        confidence: Number(item.confidence || 0),
+        reviewReason: item.reviewReason || item.review_reason || "",
+        notes: item.notes || ""
+      }};
+    }}
+    function firstPresentDate(...values) {{
+      return values.find(value => value) || "";
+    }}
+    function apiBaseUrl() {{
+      const value = String(CONFIG.apiBaseUrl || "").replace(/[/]$/, "");
+      return value && !value.includes("__") ? value : "";
+    }}
+    function cognitoDomain() {{
+      const value = String(CONFIG.cognitoDomain || "").replace(/[/]$/, "");
+      return value && !value.includes("__") ? value : "";
+    }}
+    function redirectUri() {{
+      return CONFIG.cognitoRedirectUri && !String(CONFIG.cognitoRedirectUri).includes("__")
+        ? CONFIG.cognitoRedirectUri
+        : window.location.origin + window.location.pathname;
+    }}
+    function authSession() {{
+      try {{
+        const session = JSON.parse(localStorage.getItem("pompomAuth") || "null");
+        if (!session || !session.id_token || Date.now() > Number(session.expires_at || 0)) return null;
+        return session;
+      }} catch {{
+        return null;
+      }}
+    }}
+    function updateAuthControls() {{
+      const session = authSession();
+      const enabled = Boolean(apiBaseUrl() && cognitoDomain() && CONFIG.cognitoClientId);
+      loginButton.hidden = !enabled || Boolean(session);
+      logoutButton.hidden = !enabled || !session;
+      authStatus.textContent = !enabled ? "" : session ? "管理者ログイン中" : "管理操作はログインが必要";
+    }}
+    async function login() {{
+      if (!cognitoDomain() || !CONFIG.cognitoClientId) return;
+      const verifier = randomString(64);
+      const challenge = await pkceChallenge(verifier);
+      const stateValue = randomString(32);
+      sessionStorage.setItem("pompomPkceVerifier", verifier);
+      sessionStorage.setItem("pompomAuthState", stateValue);
+      const params = new URLSearchParams({{
+        response_type: "code",
+        client_id: CONFIG.cognitoClientId,
+        redirect_uri: redirectUri(),
+        scope: "openid email profile",
+        code_challenge: challenge,
+        code_challenge_method: "S256",
+        state: stateValue
+      }});
+      window.location.href = `${{cognitoDomain()}}/oauth2/authorize?${{params.toString()}}`;
+    }}
+    async function completeLoginIfNeeded() {{
+      const params = new URLSearchParams(window.location.search);
+      const code = params.get("code");
+      if (!code || !cognitoDomain() || !CONFIG.cognitoClientId) return;
+      if (params.get("state") !== sessionStorage.getItem("pompomAuthState")) return;
+      const verifier = sessionStorage.getItem("pompomPkceVerifier") || "";
+      const body = new URLSearchParams({{
+        grant_type: "authorization_code",
+        client_id: CONFIG.cognitoClientId,
+        code,
+        redirect_uri: redirectUri(),
+        code_verifier: verifier
+      }});
+      const response = await fetch(`${{cognitoDomain()}}/oauth2/token`, {{
+        method: "POST",
+        headers: {{ "content-type": "application/x-www-form-urlencoded" }},
+        body
+      }});
+      if (!response.ok) return;
+      const token = await response.json();
+      localStorage.setItem("pompomAuth", JSON.stringify({{
+        id_token: token.id_token,
+        access_token: token.access_token,
+        expires_at: Date.now() + Number(token.expires_in || 3600) * 1000
+      }}));
+      sessionStorage.removeItem("pompomPkceVerifier");
+      sessionStorage.removeItem("pompomAuthState");
+      window.history.replaceState(null, "", redirectUri());
+    }}
+    function logout() {{
+      localStorage.removeItem("pompomAuth");
+      updateAuthControls();
+      const domain = cognitoDomain();
+      if (!domain || !CONFIG.cognitoClientId) return;
+      const params = new URLSearchParams({{
+        client_id: CONFIG.cognitoClientId,
+        logout_uri: CONFIG.cognitoLogoutUri || redirectUri()
+      }});
+      window.location.href = `${{domain}}/logout?${{params.toString()}}`;
+    }}
+    function randomString(length) {{
+      const values = new Uint8Array(length);
+      crypto.getRandomValues(values);
+      return Array.from(values, value => ("0" + (value % 36).toString(36)).slice(-1)).join("");
+    }}
+    async function pkceChallenge(verifier) {{
+      const bytes = new TextEncoder().encode(verifier);
+      const digest = await crypto.subtle.digest("SHA-256", bytes);
+      return base64Url(new Uint8Array(digest));
+    }}
+    function base64Url(bytes) {{
+      return btoa(String.fromCharCode(...bytes)).replace(/[+]/g, "-").replace(/[/]/g, "_").replace(/=+$/, "");
     }}
     function filteredItems() {{
       return ITEMS.filter(item => {{
@@ -1140,6 +1357,8 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool) -> st
       return el;
     }}
     function openDetail(item) {{
+      selectedDetailItem = item;
+      deleteItemButton.hidden = !(apiBaseUrl() && authSession() && item.itemId);
       modalBody.innerHTML = `
         ${{imageMarkup(item, "event-image modal-image")}}
         <h2>${{escapeHtml(item.title)}}</h2>
@@ -1152,6 +1371,27 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool) -> st
         ${{sourceLinks(item.sourceUrl)}}
       `;
       detailDialog.showModal();
+    }}
+    async function deleteSelectedItem() {{
+      const item = selectedDetailItem;
+      const session = authSession();
+      if (!item || !item.itemId || !session || !apiBaseUrl()) return;
+      const reason = window.prompt("削除理由（任意）", "") || "";
+      const response = await fetch(`${{apiBaseUrl()}}/admin/items/${{encodeURIComponent(item.itemId)}}`, {{
+        method: "DELETE",
+        headers: {{
+          "authorization": `Bearer ${{session.id_token}}`,
+          "content-type": "application/json"
+        }},
+        body: JSON.stringify({{ reason }})
+      }});
+      if (!response.ok) {{
+        window.alert(response.status === 403 ? "管理者権限がありません" : "削除に失敗しました");
+        return;
+      }}
+      ITEMS = ITEMS.filter(candidate => candidate.itemId !== item.itemId);
+      detailDialog.close();
+      render();
     }}
     function dateSummary(item) {{
       const rows = [];
