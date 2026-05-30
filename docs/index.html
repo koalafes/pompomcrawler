@@ -198,17 +198,21 @@
     .calendar-grid {
       display: grid;
       grid-template-columns: repeat(7, minmax(0, 1fr));
+      grid-template-rows: repeat(6, minmax(146px, auto));
+      position: relative;
     }
     .mobile-outlook {
       display: none;
     }
     .day {
-      min-height: 136px;
+      min-height: 146px;
       padding: 9px;
       border-right: 1px solid rgba(122, 75, 39, .1);
       border-bottom: 1px solid rgba(122, 75, 39, .1);
       background: rgba(255, 255, 250, .94);
       overflow: hidden;
+      position: relative;
+      z-index: 1;
     }
     .day:nth-child(7n) { border-right: 0; }
     .day.is-muted {
@@ -287,6 +291,61 @@
     .event-pill.event { border-left-color: var(--sky); background: #eaf5ff; }
     .event-pill.campaign { border-left-color: var(--berry); background: #ffeaf0; }
     .event-pill.reservation { border-left-color: var(--leaf); background: #ecf8e9; }
+    .range-bar {
+      height: 24px;
+      min-width: 0;
+      align-self: end;
+      margin: 0 4px calc(8px + (var(--range-lane, 0) * 27px));
+      padding: 0 10px;
+      border: 0;
+      border-left: 5px solid var(--mint);
+      border-radius: 7px;
+      background: var(--mint-soft);
+      color: var(--cocoa);
+      box-shadow: 0 7px 16px rgba(53, 36, 23, .1);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      overflow: hidden;
+      position: relative;
+      z-index: 3;
+    }
+    .range-bar::before {
+      content: "";
+      width: 7px;
+      height: 7px;
+      flex: 0 0 auto;
+      border-radius: 999px;
+      background: currentColor;
+      opacity: .55;
+    }
+    .range-bar strong {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 12px;
+      letter-spacing: 0;
+    }
+    .range-bar.product { border-left-color: var(--caramel); background: #fff0bf; }
+    .range-bar.event { border-left-color: var(--sky); background: #eaf5ff; }
+    .range-bar.campaign { border-left-color: var(--berry); background: #ffeaf0; }
+    .range-bar.reservation { border-left-color: var(--leaf); background: #ecf8e9; }
+    .range-bar.is-start {
+      border-top-left-radius: 7px;
+      border-bottom-left-radius: 7px;
+    }
+    .range-bar:not(.is-start) {
+      border-left-width: 0;
+      border-top-left-radius: 0;
+      border-bottom-left-radius: 0;
+      padding-left: 8px;
+    }
+    .range-bar:not(.is-end) {
+      border-top-right-radius: 0;
+      border-bottom-right-radius: 0;
+    }
     .more-button {
       width: 100%;
       border: 0;
@@ -524,6 +583,26 @@
       font-weight: 900;
       padding: 0 2px;
     }
+    .mobile-selected-section {
+      display: grid;
+      gap: 8px;
+    }
+    .mobile-selected-section-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 900;
+      padding: 2px 2px 0;
+    }
+    .mobile-selected-section-title::before {
+      content: "";
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: var(--mint);
+    }
     .mobile-event {
       width: 100%;
       min-height: 58px;
@@ -594,7 +673,15 @@
       .month-controls { justify-content: start; }
       .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .side-panel { position: static; max-height: none; }
-      .day { min-height: 112px; padding: 6px; }
+      .calendar-grid {
+        grid-template-rows: repeat(6, minmax(122px, auto));
+      }
+      .day { min-height: 122px; padding: 6px; }
+      .range-bar {
+        height: 22px;
+        margin-bottom: calc(6px + (var(--range-lane, 0) * 24px));
+        padding: 0 8px;
+      }
     }
     @media (max-width: 640px) {
       .topbar-inner { gap: 12px; }
@@ -653,7 +740,7 @@
         <div class="brand">
           <div>
             <h1>ポムポムプリン予定帳</h1>
-            <p>2026-05-30 19:33 / 直近30日＋未来</p>
+            <p>2026-05-30 21:57 / 直近30日＋未来</p>
           </div>
         </div>
         <div class="month-controls" aria-label="月移動">
@@ -777,13 +864,19 @@
       const month = state.current.getMonth();
       const first = new Date(year, month, 1);
       const start = new Date(year, month, 1 - first.getDay());
+      const visibleEndDate = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 41);
       const today = isoDate(new Date());
       for (let index = 0; index < 42; index += 1) {
         const day = new Date(start.getFullYear(), start.getMonth(), start.getDate() + index);
         const dayIso = isoDate(day);
-        const dayItems = items.filter(item => item.primaryDate === dayIso);
+        const row = Math.floor(index / 7) + 1;
+        const column = (index % 7) + 1;
+        const dayItems = items.filter(item => itemOccursOnCalendar(item, dayIso));
+        const pointItems = dayItems.filter(item => !isBandItem(item));
         const cell = document.createElement("div");
         cell.className = "day";
+        cell.style.gridColumn = String(column);
+        cell.style.gridRow = String(row);
         if (day.getMonth() !== month) cell.classList.add("is-muted");
         if (dayIso === today) cell.classList.add("is-today");
         const dayNumber = document.createElement("div");
@@ -792,11 +885,11 @@
         cell.append(dayNumber);
         const list = document.createElement("div");
         list.className = "event-list";
-        dayItems.slice(0, 3).forEach(item => list.append(eventButton(item)));
-        if (dayItems.length > 3) {
+        pointItems.slice(0, 2).forEach(item => list.append(eventButton(item)));
+        if (dayItems.length > pointItems.slice(0, 2).length) {
           const more = document.createElement("button");
           more.className = "more-button";
-          more.textContent = `+${dayItems.length - 3}件`;
+          more.textContent = `+${dayItems.length - pointItems.slice(0, 2).length}件`;
           more.addEventListener("click", () => {
             state.selectedDate = dayIso;
             renderAgenda(items);
@@ -811,6 +904,7 @@
         });
         grid.append(cell);
       }
+      rangeSegments(items, start, visibleEndDate).forEach(segment => grid.append(rangeButton(segment)));
       const monthLabel = `${year}年${month + 1}月`;
       document.querySelector(".brand h1").textContent = `ポムポムプリン予定帳 / ${monthLabel}`;
     }
@@ -821,9 +915,20 @@
       button.addEventListener("click", () => openDetail(item));
       return button;
     }
+    function rangeButton(segment) {
+      const button = document.createElement("button");
+      button.className = `range-bar ${segment.item.kind}${segment.isStart ? " is-start" : ""}${segment.isEnd ? " is-end" : ""}`;
+      button.style.gridColumn = `${segment.column} / span ${segment.span}`;
+      button.style.gridRow = String(segment.row);
+      button.style.setProperty("--range-lane", String(segment.lane));
+      button.title = `${segment.item.title} / ${dateSummary(segment.item)}`;
+      button.innerHTML = `<strong>${escapeHtml(segment.item.title)}</strong>`;
+      button.addEventListener("click", () => openDetail(segment.item));
+      return button;
+    }
     function renderAgenda(items) {
       agenda.innerHTML = "";
-      const scoped = state.selectedDate ? items.filter(item => item.primaryDate === state.selectedDate) : items;
+      const scoped = state.selectedDate ? items.filter(item => itemOccursOn(item, state.selectedDate)) : items;
       const dated = scoped.filter(item => item.primaryDate).sort((a, b) => a.primaryDate.localeCompare(b.primaryDate));
       const undated = scoped.filter(item => !item.primaryDate);
       const ordered = [...dated, ...undated].slice(0, 80);
@@ -894,18 +999,31 @@
     function renderMobileSelected(items) {
       mobileSelected.innerHTML = "";
       const selectedItems = items.filter(item => item.primaryDate === state.selectedDate);
+      const ongoingItems = items.filter(item => isRangeItem(item) && itemOccursOn(item, state.selectedDate) && item.primaryDate !== state.selectedDate);
       const title = document.createElement("div");
       title.className = "mobile-selected-head";
       title.textContent = formatMobileDate(state.selectedDate, state.selectedDate === isoDate(new Date()));
       mobileSelected.append(title);
-      if (!selectedItems.length) {
+      if (!selectedItems.length && !ongoingItems.length) {
         const empty = document.createElement("div");
         empty.className = "empty";
         empty.textContent = "この日の予定はまだありません";
         mobileSelected.append(empty);
         return;
       }
-      selectedItems.forEach(item => mobileSelected.append(mobileEventButton(item)));
+      appendMobileSelectedSection("当日の予定", selectedItems);
+      appendMobileSelectedSection("開催中の予定", ongoingItems);
+    }
+    function appendMobileSelectedSection(label, items) {
+      if (!items.length) return;
+      const section = document.createElement("section");
+      section.className = "mobile-selected-section";
+      const heading = document.createElement("div");
+      heading.className = "mobile-selected-section-title";
+      heading.textContent = `${label} ${items.length}件`;
+      section.append(heading);
+      items.forEach(item => section.append(mobileEventButton(item)));
+      mobileSelected.append(section);
     }
     function mobileEventButton(item) {
       const button = document.createElement("button");
@@ -965,6 +1083,85 @@
       if (item.reservationStart) rows.push(`予約開始: ${item.reservationStart}`);
       return rows.join(" / ") || "日付未確定";
     }
+    function isRangeItem(item) {
+      if (!item.startDate || !item.endDate) return false;
+      return item.startDate < item.endDate;
+    }
+    function isBandItem(item) {
+      return item.kind === "event" && isRangeItem(item);
+    }
+    function itemOccursOnCalendar(item, dayIso) {
+      if (!dayIso) return false;
+      if (isBandItem(item)) return item.startDate <= dayIso && dayIso <= item.endDate;
+      return item.primaryDate === dayIso;
+    }
+    function itemOccursOn(item, dayIso) {
+      if (!dayIso) return false;
+      if (isRangeItem(item)) return item.startDate <= dayIso && dayIso <= item.endDate;
+      return item.primaryDate === dayIso;
+    }
+    function datesForItem(item) {
+      if (!isRangeItem(item)) return item.primaryDate ? [item.primaryDate] : [];
+      const dates = [];
+      let cursor = parseLocalDate(item.startDate);
+      const end = parseLocalDate(item.endDate);
+      while (cursor <= end && dates.length < 370) {
+        dates.push(isoDate(cursor));
+        cursor = addDays(cursor, 1);
+      }
+      return dates;
+    }
+    function rangeSegments(items, visibleStart, visibleEnd) {
+      const segments = [];
+      const lanesByRow = Array.from({ length: 6 }, () => []);
+      const rangeItems = items
+        .filter(isBandItem)
+        .sort((a, b) => a.startDate.localeCompare(b.startDate) || b.endDate.localeCompare(a.endDate));
+      rangeItems.forEach(item => {
+        let cursor = maxDate(parseLocalDate(item.startDate), visibleStart);
+        const end = minDate(parseLocalDate(item.endDate), visibleEnd);
+        if (cursor > end) return;
+        while (cursor <= end) {
+          const offset = daysBetween(visibleStart, cursor);
+          const row = Math.floor(offset / 7) + 1;
+          const column = (offset % 7) + 1;
+          const weekEnd = addDays(visibleStart, row * 7 - 1);
+          const segmentEnd = minDate(end, weekEnd);
+          const span = daysBetween(cursor, segmentEnd) + 1;
+          const lane = allocateLane(lanesByRow[row - 1], column, column + span - 1);
+          segments.push({
+            item,
+            row,
+            column,
+            span,
+            lane,
+            isStart: isoDate(cursor) === item.startDate,
+            isEnd: isoDate(segmentEnd) === item.endDate
+          });
+          cursor = addDays(segmentEnd, 1);
+        }
+      });
+      return segments;
+    }
+    function allocateLane(lanes, startColumn, endColumn) {
+      const lane = lanes.findIndex(lastEndColumn => lastEndColumn < startColumn);
+      if (lane >= 0) {
+        lanes[lane] = endColumn;
+        return lane;
+      }
+      lanes.push(endColumn);
+      return lanes.length - 1;
+    }
+    function addDays(date, days) {
+      return new Date(date.getFullYear(), date.getMonth(), date.getDate() + days);
+    }
+    function daysBetween(start, end) {
+      const startUtc = Date.UTC(start.getFullYear(), start.getMonth(), start.getDate());
+      const endUtc = Date.UTC(end.getFullYear(), end.getMonth(), end.getDate());
+      return Math.round((endUtc - startUtc) / 86400000);
+    }
+    function minDate(a, b) { return a <= b ? a : b; }
+    function maxDate(a, b) { return a >= b ? a : b; }
     function sourceLinks(value) {
       if (!value) return "";
       return value.split(" | ").map(url => `<a class="source-link" href="${escapeAttr(url)}" target="_blank" rel="noreferrer">ソースを開く</a>`).join("<br>");
