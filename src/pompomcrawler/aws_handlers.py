@@ -89,7 +89,13 @@ def require_admin(event: dict[str, Any]) -> dict[str, Any]:
     groups = claims.get("cognito:groups", [])
     if isinstance(groups, str):
         groups = [group.strip() for group in groups.replace(",", " ").split() if group.strip()]
-    if "calendar-admin" not in groups:
+    admin_emails = {
+        email.strip().lower()
+        for email in os.getenv("ADMIN_EMAILS", "").split(",")
+        if email.strip()
+    }
+    email = str(claims.get("email") or "").strip().lower()
+    if "calendar-admin" not in groups and email not in admin_emails:
         raise PermissionError("calendar-admin group is required")
     return claims
 

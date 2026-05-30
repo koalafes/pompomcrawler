@@ -102,6 +102,23 @@ def test_public_api_hides_excluded_and_admin_delete_requires_group(monkeypatch):
     assert json.loads(public_response["body"])["items"] == []
 
 
+def test_admin_email_can_delete_when_group_claim_missing(monkeypatch):
+    store = memory_store()
+    item = schedule_item()
+    item_id = schedule_item_id(item)
+    store.put_schedule_items([item])
+    monkeypatch.setattr(aws_handlers.DynamoScheduleStore, "from_env", classmethod(lambda cls: store))
+    monkeypatch.setenv("ADMIN_EMAILS", "admin@example.com")
+
+    deleted = aws_handlers.api_handler(
+        api_event("DELETE", f"/admin/items/{item_id}", body={"reason": "wrong item"}),
+        None,
+    )
+
+    assert deleted["statusCode"] == 200
+    assert store.get_schedule_record(item_id)["status"] == "excluded"
+
+
 def api_event(method: str, path: str, *, body: dict | None = None, groups: list[str] | None = None) -> dict:
     claims = {"email": "admin@example.com"}
     if groups:

@@ -68,6 +68,7 @@ class PompomCrawlerStack(Stack):
             "RAW_DOCUMENTS_TABLE": raw_documents.table_name,
             "OPENAI_SECRET_ARN": openai_secret.secret_arn,
             "POMPOM_CONFIG_PATH": "config/sources.yml",
+            "ADMIN_EMAILS": str(self.node.try_get_context("admin_emails") or ""),
         }
         code = lambda_.Code.from_asset(
             str(ROOT),
