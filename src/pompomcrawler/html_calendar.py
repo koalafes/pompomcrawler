@@ -418,17 +418,38 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool) -> st
     .agenda-item:last-child {{ border-bottom: 0; }}
     .event-image {{
       display: block;
+      position: relative;
       overflow: hidden;
       border-radius: 8px;
-      background: #fff0bf;
+      background:
+        linear-gradient(135deg, rgba(255, 224, 138, .88), rgba(255, 250, 240, .96) 54%, rgba(71, 185, 169, .28));
       border: 1px solid rgba(122, 75, 39, .12);
       box-shadow: 0 8px 18px rgba(122, 75, 39, .08);
     }}
+    .event-image::before {{
+      content: "POMPOMPURIN";
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      padding: 8px;
+      color: rgba(122, 75, 39, .62);
+      font-size: 10px;
+      font-weight: 900;
+      line-height: 1.1;
+      text-align: center;
+      letter-spacing: 0;
+    }}
     .event-image img {{
+      position: relative;
+      z-index: 1;
       display: block;
       width: 100%;
       height: 100%;
       object-fit: cover;
+    }}
+    .event-image.is-placeholder img {{
+      display: none;
     }}
     .agenda-thumb {{
       width: 82px;
@@ -1028,7 +1049,7 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool) -> st
     function imageMarkup(item, className) {{
       const imageUrl = safeImageUrl(item.imageUrl);
       if (!imageUrl) return "";
-      return `<span class="${{escapeAttr(className)}}"><img src="${{imageUrl}}" alt="${{escapeAttr(item.title)}}" loading="lazy" referrerpolicy="no-referrer"></span>`;
+      return `<span class="${{escapeAttr(className)}}"><img src="${{imageUrl}}" alt="${{escapeAttr(item.title)}}" loading="lazy" onerror="this.closest('.event-image').classList.add('is-placeholder'); this.alt='';"></span>`;
     }}
     function safeImageUrl(value) {{
       try {{
