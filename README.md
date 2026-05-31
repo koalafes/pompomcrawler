@@ -2,7 +2,9 @@
 
 ポムポムプリンの新商品・イベント情報を広めに集め、確認しやすい CSV/XLSX のスケジュール表にするための CLI です。
 
-公開カレンダー: https://koalafes.github.io/pompomcrawler/
+公開カレンダー: https://main.d1tvp4oub2aan6.amplifyapp.com/
+
+旧 GitHub Pages 版: https://koalafes.github.io/pompomcrawler/
 
 外部検索 API や SNS API は不要です。OpenAI API キーがある場合は、取得済みページ本文から商品名・日付・場所などを構造化抽出します。取得元ページに `og:image` や本文画像がある場合は画像 URL も候補に保存し、HTML カレンダーの予定欄に表示します。キーがない場合も、固定巡回、確認チェックリスト生成、手動 CSV 取り込み、CSV 出力は動きます。
 
@@ -63,6 +65,13 @@ pompomcrawler extract --no-openai --replace
 ## AWS migration
 
 AWS 版は `infra/` の CDK スタックで、DynamoDB、API Gateway HTTP API、Lambda、Cognito、EventBridge Scheduler を作成します。公開カレンダーは Amplify Hosting から `docs/index.html` を配信し、管理操作は Cognito の `calendar-admin` グループに入ったユーザーだけが実行できます。自動巡回は毎日 07:00 / 18:00 JST に実行します。
+
+現在のアクセス先:
+
+- 公開カレンダー: https://main.d1tvp4oub2aan6.amplifyapp.com/
+- 公開API: https://pg2isf3a64.execute-api.ap-northeast-1.amazonaws.com/items
+- Cognito Hosted UI: https://pompomcrawler-154052710150-ap-northeast-1.auth.ap-northeast-1.amazoncognito.com
+- AWSリージョン: `ap-northeast-1`
 
 ```bash
 cd infra
