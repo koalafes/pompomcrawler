@@ -83,6 +83,8 @@ POMPOM_COGNITO_LOGOUT_URI=https://main.xxxxx.amplifyapp.com/ \
 POMPOM_NEW_LABEL_AFTER=2026-05-31T00:00:00+00:00
 ```
 
+`POMPOM_NEW_LABEL_AFTER` 以降に追加された予定は、追加から24時間だけ「新着」ラベルを表示します。
+
 既存データの初回投入は、CDK 出力のテーブル名を環境変数に入れて実行します。
 
 ```bash

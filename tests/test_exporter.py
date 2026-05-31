@@ -43,6 +43,7 @@ def test_export_schedule_writes_csv(tmp_path: Path):
     assert "item.startDate <= today && today <= item.endDate" in html
     assert "function isNewItem" in html
     assert "new-badge" in html
+    assert "24 * 60 * 60 * 1000" in html
 
 
 def test_export_calendar_html_can_use_aws_runtime_without_embedded_items(tmp_path: Path):

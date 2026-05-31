@@ -1442,7 +1442,7 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool, aws_r
         if (Number.isFinite(min) && created < min) return false;
       }}
       const ageMs = Date.now() - created;
-      return ageMs >= 0 && ageMs <= 7 * 24 * 60 * 60 * 1000;
+      return ageMs >= 0 && ageMs <= 24 * 60 * 60 * 1000;
     }}
     async function deleteSelectedItem() {{
       const item = selectedDetailItem;
