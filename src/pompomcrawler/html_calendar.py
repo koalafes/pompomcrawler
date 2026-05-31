@@ -89,6 +89,7 @@ def runtime_config() -> dict[str, str]:
         "cognitoClientId": os.getenv("POMPOM_COGNITO_CLIENT_ID", "__POMPOM_COGNITO_CLIENT_ID__"),
         "cognitoRedirectUri": os.getenv("POMPOM_COGNITO_REDIRECT_URI", "__POMPOM_COGNITO_REDIRECT_URI__"),
         "cognitoLogoutUri": os.getenv("POMPOM_COGNITO_LOGOUT_URI", "__POMPOM_COGNITO_LOGOUT_URI__"),
+        "newLabelAfter": os.getenv("POMPOM_NEW_LABEL_AFTER", "__POMPOM_NEW_LABEL_AFTER__"),
     }
 
 
@@ -583,6 +584,36 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool, aws_r
     .tag.review {{ background: #ffe7a1; }}
     .tag.confirmed {{ background: #dff4e7; color: #2f7652; }}
     .tag.excluded {{ background: #eee8dc; color: #8d7b68; }}
+    .new-badge {{
+      display: inline-flex;
+      align-items: center;
+      min-height: 22px;
+      padding: 0 7px;
+      border-radius: 999px;
+      background: #e5484d;
+      color: #fffdf8;
+      font-size: 11px;
+      font-weight: 900;
+      letter-spacing: 0;
+      line-height: 1;
+    }}
+    .event-pill.is-new {{
+      box-shadow: inset 3px 0 0 #e5484d;
+    }}
+    .event-pill .new-badge {{
+      margin-left: 4px;
+      min-height: 18px;
+      padding: 0 5px;
+      font-size: 10px;
+      vertical-align: 1px;
+    }}
+    .range-bar.is-new::after {{
+      content: "新着";
+      margin-left: 8px;
+      color: #b3262d;
+      font-size: 11px;
+      font-weight: 900;
+    }}
     .detail-text {{ margin: 0; color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }}
     .source-link {{
       display: inline-block;
@@ -1024,7 +1055,9 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool, aws_r
         sourceName: item.sourceName || item.source_name || "",
         confidence: Number(item.confidence || 0),
         reviewReason: item.reviewReason || item.review_reason || "",
-        notes: item.notes || ""
+        notes: item.notes || "",
+        createdAt: item.createdAt || item.created_at || "",
+        updatedAt: item.updatedAt || item.updated_at || ""
       }};
     }}
     function firstPresentDate(...values) {{
@@ -1042,6 +1075,10 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool, aws_r
       return CONFIG.cognitoRedirectUri && !String(CONFIG.cognitoRedirectUri).includes("__")
         ? CONFIG.cognitoRedirectUri
         : window.location.origin + window.location.pathname;
+    }}
+    function newLabelAfter() {{
+      const value = String(CONFIG.newLabelAfter || "");
+      return value && !value.includes("__") ? value : "";
     }}
     function authSession() {{
       try {{
@@ -1204,14 +1241,14 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool, aws_r
     }}
     function eventButton(item) {{
       const button = document.createElement("button");
-      button.className = `event-pill ${{item.kind}}`;
-      button.innerHTML = `<strong>${{escapeHtml(item.title)}}</strong><span>${{escapeHtml(item.kindLabel)}} / ${{escapeHtml(dateSummary(item))}}</span>`;
+      button.className = `event-pill ${{item.kind}}${{isNewItem(item) ? " is-new" : ""}}`;
+      button.innerHTML = `<strong>${{escapeHtml(item.title)}}${{newBadge(item)}}</strong><span>${{escapeHtml(item.kindLabel)}} / ${{escapeHtml(dateSummary(item))}}</span>`;
       button.addEventListener("click", () => openDetail(item));
       return button;
     }}
     function rangeButton(segment) {{
       const button = document.createElement("button");
-      button.className = `range-bar ${{segment.item.kind}}${{segment.isStart ? " is-start" : ""}}${{segment.isEnd ? " is-end" : ""}}`;
+      button.className = `range-bar ${{segment.item.kind}}${{segment.isStart ? " is-start" : ""}}${{segment.isEnd ? " is-end" : ""}}${{isNewItem(segment.item) ? " is-new" : ""}}`;
       button.style.gridColumn = `${{segment.column}} / span ${{segment.span}}`;
       button.style.gridRow = String(segment.row);
       button.style.setProperty("--range-lane", String(segment.lane));
@@ -1366,6 +1403,7 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool, aws_r
           <h3>${{escapeHtml(item.title)}}</h3>
           <div class="meta">
             <span class="tag">${{escapeHtml(item.kindLabel)}}</span>
+            ${{newBadge(item)}}
           </div>
           <p class="detail-text">${{escapeHtml(dateSummary(item))}}</p>
           <p class="detail-text">${{escapeHtml(item.sellerOrVenue || item.sourceName || "")}}</p>
@@ -1382,6 +1420,7 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool, aws_r
         <h2>${{escapeHtml(item.title)}}</h2>
         <div class="meta">
           <span class="tag">${{escapeHtml(item.kindLabel)}}</span>
+          ${{newBadge(item)}}
         </div>
         <p class="detail-text">${{escapeHtml(dateSummary(item))}}</p>
         <p class="detail-text">${{escapeHtml(item.sellerOrVenue || "")}}</p>
@@ -1389,6 +1428,21 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool, aws_r
         ${{sourceLinks(item.sourceUrl)}}
       `;
       detailDialog.showModal();
+    }}
+    function newBadge(item) {{
+      return isNewItem(item) ? `<span class="new-badge">新着</span>` : "";
+    }}
+    function isNewItem(item) {{
+      if (!item.createdAt) return false;
+      const created = Date.parse(item.createdAt);
+      if (!Number.isFinite(created)) return false;
+      const minValue = newLabelAfter();
+      if (minValue) {{
+        const min = Date.parse(minValue);
+        if (Number.isFinite(min) && created < min) return false;
+      }}
+      const ageMs = Date.now() - created;
+      return ageMs >= 0 && ageMs <= 7 * 24 * 60 * 60 * 1000;
     }}
     async function deleteSelectedItem() {{
       const item = selectedDetailItem;

@@ -198,7 +198,7 @@ class PompomCrawlerStack(Stack):
             self,
             "DailyCrawlerSchedule",
             flexible_time_window=scheduler.CfnSchedule.FlexibleTimeWindowProperty(mode="OFF"),
-            schedule_expression="cron(0 9 * * ? *)",
+            schedule_expression="cron(0 7,18 * * ? *)",
             schedule_expression_timezone="Asia/Tokyo",
             target=scheduler.CfnSchedule.TargetProperty(
                 arn=crawler_function.function_arn,

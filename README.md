@@ -62,7 +62,7 @@ pompomcrawler extract --no-openai --replace
 
 ## AWS migration
 
-AWS 版は `infra/` の CDK スタックで、DynamoDB、API Gateway HTTP API、Lambda、Cognito、EventBridge Scheduler を作成します。公開カレンダーは Amplify Hosting から `docs/index.html` を配信し、管理操作は Cognito の `calendar-admin` グループに入ったユーザーだけが実行できます。
+AWS 版は `infra/` の CDK スタックで、DynamoDB、API Gateway HTTP API、Lambda、Cognito、EventBridge Scheduler を作成します。公開カレンダーは Amplify Hosting から `docs/index.html` を配信し、管理操作は Cognito の `calendar-admin` グループに入ったユーザーだけが実行できます。自動巡回は毎日 07:00 / 18:00 JST に実行します。
 
 ```bash
 cd infra
@@ -79,7 +79,8 @@ POMPOM_API_BASE_URL=https://... \
 POMPOM_COGNITO_DOMAIN=https://...auth.ap-northeast-1.amazoncognito.com \
 POMPOM_COGNITO_CLIENT_ID=... \
 POMPOM_COGNITO_REDIRECT_URI=https://main.xxxxx.amplifyapp.com/ \
-POMPOM_COGNITO_LOGOUT_URI=https://main.xxxxx.amplifyapp.com/
+POMPOM_COGNITO_LOGOUT_URI=https://main.xxxxx.amplifyapp.com/ \
+POMPOM_NEW_LABEL_AFTER=2026-05-31T00:00:00+00:00
 ```
 
 既存データの初回投入は、CDK 出力のテーブル名を環境変数に入れて実行します。
