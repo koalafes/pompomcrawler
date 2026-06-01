@@ -899,7 +899,7 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool, aws_r
         <div class="brand">
           <div>
             <h1>ポムポムプリン予定帳</h1>
-            <p>{escape(generated_at)} / {escape(window_text)}</p>
+            <p id="dataSummary">{escape(generated_at)} / {escape(window_text)}</p>
           </div>
         </div>
         <div class="month-controls" aria-label="月移動">
@@ -973,6 +973,7 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool, aws_r
     const loginButton = document.getElementById("loginButton");
     const logoutButton = document.getElementById("logoutButton");
     const deleteItemButton = document.getElementById("deleteItemButton");
+    const dataSummary = document.getElementById("dataSummary");
 
     document.getElementById("prevMonth").addEventListener("click", () => shiftMonth(-1));
     document.getElementById("nextMonth").addEventListener("click", () => shiftMonth(1));
@@ -997,6 +998,7 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool, aws_r
       await completeLoginIfNeeded();
       updateAuthControls();
       ITEMS = await loadItems();
+      updateDataSummary();
       state.current = initialMonth(ITEMS);
       render();
     }}
@@ -1021,6 +1023,26 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool, aws_r
     function fillFilters() {{
       const kindFilter = document.getElementById("kindFilter");
       Object.entries(kindLabels).forEach(([value, label]) => kindFilter.append(new Option(label, value)));
+    }}
+    function updateDataSummary() {{
+      const latest = ITEMS
+        .map(item => item.updatedAt || item.createdAt)
+        .filter(Boolean)
+        .sort()
+        .pop();
+      if (!latest || !apiBaseUrl()) return;
+      const date = new Date(latest);
+      if (Number.isNaN(date.getTime())) return;
+      const formatted = date.toLocaleString("ja-JP", {{
+        timeZone: "Asia/Tokyo",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false
+      }}).replaceAll("/", "-");
+      dataSummary.textContent = `最終データ更新 ${{formatted}} / {escape(window_text)}`;
     }}
     async function loadItems() {{
       if (!apiBaseUrl()) return FALLBACK_ITEMS.map(normalizeItem);

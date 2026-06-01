@@ -798,7 +798,7 @@
         <div class="brand">
           <div>
             <h1>ポムポムプリン予定帳</h1>
-            <p>2026-05-31 15:46 / 直近30日＋未来</p>
+            <p id="dataSummary">2026-06-01 19:52 / 直近30日＋未来</p>
           </div>
         </div>
         <div class="month-controls" aria-label="月移動">
@@ -872,6 +872,7 @@
     const loginButton = document.getElementById("loginButton");
     const logoutButton = document.getElementById("logoutButton");
     const deleteItemButton = document.getElementById("deleteItemButton");
+    const dataSummary = document.getElementById("dataSummary");
 
     document.getElementById("prevMonth").addEventListener("click", () => shiftMonth(-1));
     document.getElementById("nextMonth").addEventListener("click", () => shiftMonth(1));
@@ -896,6 +897,7 @@
       await completeLoginIfNeeded();
       updateAuthControls();
       ITEMS = await loadItems();
+      updateDataSummary();
       state.current = initialMonth(ITEMS);
       render();
     }
@@ -920,6 +922,26 @@
     function fillFilters() {
       const kindFilter = document.getElementById("kindFilter");
       Object.entries(kindLabels).forEach(([value, label]) => kindFilter.append(new Option(label, value)));
+    }
+    function updateDataSummary() {
+      const latest = ITEMS
+        .map(item => item.updatedAt || item.createdAt)
+        .filter(Boolean)
+        .sort()
+        .pop();
+      if (!latest || !apiBaseUrl()) return;
+      const date = new Date(latest);
+      if (Number.isNaN(date.getTime())) return;
+      const formatted = date.toLocaleString("ja-JP", {
+        timeZone: "Asia/Tokyo",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false
+      }).replaceAll("/", "-");
+      dataSummary.textContent = `最終データ更新 ${formatted} / 直近30日＋未来`;
     }
     async function loadItems() {
       if (!apiBaseUrl()) return FALLBACK_ITEMS.map(normalizeItem);
