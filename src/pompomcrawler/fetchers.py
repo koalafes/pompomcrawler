@@ -5,9 +5,10 @@ import re
 import time
 from html.parser import HTMLParser
 from typing import Iterable
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse
 from urllib.request import Request, urlopen
 
+from .aggregation import canonical_url
 from .models import RawDocument, now_iso
 
 
@@ -140,6 +141,25 @@ def keyword_match(value: str, keywords: Iterable[str]) -> bool:
     return any(keyword.lower() in lowered for keyword in keywords if keyword)
 
 
+def should_skip_discovered_link(source_url: str, target_url: str) -> bool:
+    source = urlparse(canonical_url(source_url))
+    target = urlparse(canonical_url(target_url))
+    if canonical_url(source_url) == canonical_url(target_url):
+        return True
+    if source.netloc != target.netloc:
+        return False
+    source_path = source.path.rstrip("/")
+    target_path = target.path.rstrip("/")
+    if target_path.startswith(("/goods/pompompurin30th_", "/food/food_pompompurin30th_")):
+        return True
+    feature_match = re.match(r"^/(?P<section>goods|food)-feature/(?P<slug>[^/]+)$", source_path)
+    if not feature_match:
+        return False
+    section = feature_match.group("section")
+    slug = feature_match.group("slug")
+    return target_path.startswith(f"/{section}/{slug}_")
+
+
 def fetch_page_source(
     source: dict,
     keywords: list[str],
@@ -175,11 +195,11 @@ def fetch_page_source(
         return docs
 
     discovered = 0
-    seen = {url}
+    seen = {canonical_url(url)}
     for href, label in links:
-        absolute = urljoin(url, href)
+        absolute = canonical_url(urljoin(url, href))
         haystack = f"{absolute} {label}"
-        if absolute in seen or not keyword_match(haystack, keywords):
+        if absolute in seen or should_skip_discovered_link(url, absolute) or not keyword_match(haystack, keywords):
             continue
         seen.add(absolute)
         try:

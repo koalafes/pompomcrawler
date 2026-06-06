@@ -527,6 +527,108 @@
       color: var(--muted);
       text-align: center;
     }
+    .loading-copy {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 900;
+    }
+    .loading-copy::before {
+      content: "";
+      width: 16px;
+      height: 16px;
+      border-radius: 999px;
+      border: 3px solid rgba(122, 75, 39, .18);
+      border-top-color: var(--mint);
+      animation: loading-spin .82s linear infinite;
+    }
+    .skeleton {
+      position: relative;
+      overflow: hidden;
+      border-radius: 7px;
+      background: linear-gradient(90deg, rgba(234, 215, 179, .38), rgba(255, 253, 245, .95), rgba(234, 215, 179, .38));
+      background-size: 220% 100%;
+      animation: skeleton-shimmer 1.25s ease-in-out infinite;
+    }
+    .skeleton-day {
+      min-height: 146px;
+      padding: 10px;
+      border-right: 1px solid rgba(122, 75, 39, .1);
+      border-bottom: 1px solid rgba(122, 75, 39, .1);
+      background: rgba(255, 255, 250, .94);
+      display: grid;
+      align-content: start;
+      gap: 9px;
+    }
+    .skeleton-day:nth-child(7n) { border-right: 0; }
+    .skeleton-line {
+      height: 12px;
+      width: 100%;
+    }
+    .skeleton-line.short { width: 36%; }
+    .skeleton-line.medium { width: 68%; }
+    .skeleton-pill {
+      height: 30px;
+      width: 100%;
+    }
+    .skeleton-agenda {
+      display: grid;
+      gap: 0;
+    }
+    .skeleton-agenda-row {
+      display: grid;
+      grid-template-columns: 82px minmax(0, 1fr);
+      gap: 12px;
+      padding: 14px 2px;
+      border-bottom: 1px solid rgba(122, 75, 39, .12);
+    }
+    .skeleton-thumb {
+      width: 82px;
+      aspect-ratio: 1;
+    }
+    .skeleton-copy {
+      display: grid;
+      align-content: center;
+      gap: 9px;
+      min-width: 0;
+    }
+    .mobile-skeleton-day {
+      min-height: 54px;
+      padding: 8px 6px;
+      border-right: 1px solid rgba(122, 75, 39, .09);
+      border-bottom: 1px solid rgba(122, 75, 39, .09);
+      background: rgba(255, 255, 250, .92);
+      display: grid;
+      gap: 6px;
+      justify-items: center;
+      align-content: center;
+    }
+    .mobile-skeleton-day:nth-child(7n) { border-right: 0; }
+    .mobile-skeleton-number {
+      width: 22px;
+      height: 22px;
+      border-radius: 999px;
+    }
+    .mobile-skeleton-dots {
+      width: 34px;
+      height: 8px;
+      border-radius: 999px;
+    }
+    @keyframes skeleton-shimmer {
+      0% { background-position: 120% 0; }
+      100% { background-position: -120% 0; }
+    }
+    @keyframes loading-spin {
+      to { transform: rotate(360deg); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .loading-copy::before,
+      .skeleton {
+        animation: none;
+      }
+    }
     .mobile-outlook-panel {
       border-radius: 8px;
       background: rgba(255, 253, 245, .92);
@@ -798,7 +900,7 @@
         <div class="brand">
           <div>
             <h1>ポムポムプリン予定帳</h1>
-            <p id="dataSummary">2026-06-01 19:52 / 直近30日＋未来</p>
+            <p id="dataSummary">2026-06-06 22:50 / 直近30日＋未来</p>
           </div>
         </div>
         <div class="month-controls" aria-label="月移動">
@@ -894,12 +996,17 @@
     initialize();
 
     async function initialize() {
+      renderLoading();
       await completeLoginIfNeeded();
       updateAuthControls();
-      ITEMS = await loadItems();
-      updateDataSummary();
-      state.current = initialMonth(ITEMS);
-      render();
+      try {
+        ITEMS = await loadItems();
+        updateDataSummary();
+        state.current = initialMonth(ITEMS);
+        render();
+      } catch (error) {
+        renderLoadError(error);
+      }
     }
 
     function initialMonth(items) { return startOfMonth(new Date()); }
@@ -922,6 +1029,87 @@
     function fillFilters() {
       const kindFilter = document.getElementById("kindFilter");
       Object.entries(kindLabels).forEach(([value, label]) => kindFilter.append(new Option(label, value)));
+    }
+    function renderLoading() {
+      dataSummary.innerHTML = `<span class="loading-copy">予定を読み込み中</span>`;
+      renderLoadingCalendar();
+      renderLoadingAgenda();
+      renderLoadingMobile();
+    }
+    function renderLoadingCalendar() {
+      title.innerHTML = "";
+      weekdays.forEach(day => {
+        const el = document.createElement("div");
+        el.className = "weekday";
+        el.textContent = day;
+        title.append(el);
+      });
+      grid.innerHTML = "";
+      for (let index = 0; index < 42; index += 1) {
+        const cell = document.createElement("div");
+        cell.className = "skeleton-day";
+        cell.innerHTML = `
+          <span class="skeleton skeleton-line short"></span>
+          <span class="skeleton skeleton-pill"></span>
+          <span class="skeleton skeleton-pill"></span>
+          <span class="skeleton skeleton-line medium"></span>
+        `;
+        grid.append(cell);
+      }
+    }
+    function renderLoadingAgenda() {
+      agendaTitle.textContent = "これからの予定";
+      agendaSubtitle.textContent = "読み込み中";
+      agenda.innerHTML = `
+        <div class="skeleton-agenda">
+          ${Array.from({ length: 5 }, () => `
+            <div class="skeleton-agenda-row">
+              <span class="skeleton skeleton-thumb"></span>
+              <span class="skeleton-copy">
+                <span class="skeleton skeleton-line"></span>
+                <span class="skeleton skeleton-line medium"></span>
+                <span class="skeleton skeleton-line short"></span>
+              </span>
+            </div>
+          `).join("")}
+        </div>
+      `;
+    }
+    function renderLoadingMobile() {
+      mobileWeekdays.innerHTML = "";
+      weekdays.forEach(day => {
+        const el = document.createElement("span");
+        el.textContent = day;
+        mobileWeekdays.append(el);
+      });
+      mobileGrid.innerHTML = "";
+      for (let index = 0; index < 35; index += 1) {
+        const cell = document.createElement("div");
+        cell.className = "mobile-skeleton-day";
+        cell.innerHTML = `
+          <span class="skeleton mobile-skeleton-number"></span>
+          <span class="skeleton mobile-skeleton-dots"></span>
+        `;
+        mobileGrid.append(cell);
+      }
+      mobileSelected.innerHTML = `
+        <div class="mobile-selected-head"><span class="loading-copy">予定を読み込み中</span></div>
+        <div class="skeleton-agenda-row">
+          <span class="skeleton skeleton-thumb"></span>
+          <span class="skeleton-copy">
+            <span class="skeleton skeleton-line"></span>
+            <span class="skeleton skeleton-line medium"></span>
+            <span class="skeleton skeleton-line short"></span>
+          </span>
+        </div>
+      `;
+    }
+    function renderLoadError(error) {
+      dataSummary.textContent = "予定の読み込みに失敗しました";
+      agendaTitle.textContent = "読み込みエラー";
+      agendaSubtitle.textContent = "";
+      agenda.innerHTML = `<div class="empty">${escapeHtml(error?.message || "予定を読み込めませんでした")}</div>`;
+      mobileSelected.innerHTML = `<div class="empty">${escapeHtml(error?.message || "予定を読み込めませんでした")}</div>`;
     }
     function updateDataSummary() {
       const latest = ITEMS

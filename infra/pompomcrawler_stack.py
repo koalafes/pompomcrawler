@@ -25,7 +25,28 @@ ROOT = Path(__file__).resolve().parents[1]
 @jsii.implements(ILocalBundling)
 class LocalPythonBundling:
     def try_bundle(self, output_dir: str, options: BundlingOptions) -> bool:
-        subprocess.check_call([sys.executable, "-m", "pip", "install", str(ROOT), "-t", output_dir])
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "sgmllib3k==1.0.0", "-t", output_dir])
+        subprocess.check_call(
+            [
+                sys.executable,
+                "-m",
+                "pip",
+                "install",
+                "--platform",
+                "manylinux2014_x86_64",
+                "--implementation",
+                "cp",
+                "--python-version",
+                "3.12",
+                "--only-binary=:all:",
+                "--no-deps",
+                "--target",
+                output_dir,
+                "-r",
+                str(ROOT / "requirements-lambda.txt"),
+            ]
+        )
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "--no-deps", str(ROOT), "-t", output_dir])
         shutil.copytree(ROOT / "config", Path(output_dir) / "config", dirs_exist_ok=True)
         return True
 

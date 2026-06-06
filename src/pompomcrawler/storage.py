@@ -87,11 +87,12 @@ def append_schedule_items(items: Iterable[ScheduleItem], path: Path = ITEMS_PATH
     if not incoming:
         return 0
 
+    from .aggregation import merge_related_items
     from .extract import merge_duplicates
 
     existing = read_schedule_items(path)
     existing_rows = [item.to_dict() for item in existing]
-    merged = merge_duplicates([*existing, *incoming])
+    merged = merge_related_items(merge_duplicates([*existing, *incoming]))
     if len(merged) != len(existing) or [item.to_dict() for item in merged] != existing_rows:
         write_schedule_items(merged, path)
     return max(0, len(merged) - len(existing))

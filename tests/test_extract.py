@@ -1,4 +1,12 @@
-from pompomcrawler.extract import guess_first_japanese_date, heuristic_extract, load_dotenv_if_available, merge_duplicates
+from pompomcrawler.extract import (
+    OpenAIExtractor,
+    extract_items_from_documents,
+    guess_first_japanese_date,
+    guess_japanese_date_ranges,
+    heuristic_extract,
+    load_dotenv_if_available,
+    merge_duplicates,
+)
 from pompomcrawler.models import RawDocument, ScheduleItem
 
 
@@ -39,6 +47,48 @@ def test_heuristic_extract_keeps_related_candidate():
     assert items[0].status == "needs_review"
     assert items[0].source_url == doc.url
     assert items[0].image_url == "https://example.com/pompompurin.jpg"
+
+
+def test_extract_items_uses_heuristic_dates_when_openai_fails(monkeypatch):
+    doc = RawDocument(
+        url="https://example.com/news",
+        source_name="sample",
+        title="数量限定☆ポムポムプリンコラボデザインが登場！",
+        text="2026/06/01 ポムポムプリン30周年を記念したコラボデザインが発売中です。",
+        fetched_at="2026-06-03T00:00:00+00:00",
+    )
+    monkeypatch.setenv("OPENAI_API_KEY", "dummy-key")
+    monkeypatch.setattr(OpenAIExtractor, "extract", lambda self, doc: (_ for _ in ()).throw(RuntimeError("boom")))
+
+    items = extract_items_from_documents([doc], use_openai=True)
+
+    assert items[0].release_date == "2026-06-01"
+    assert "OpenAI extraction failed: boom" in items[0].review_reason
+
+
+def test_heuristic_extract_uses_date_range_for_multi_city_pop_up():
+    doc = RawDocument(
+        url="https://example.com/popup",
+        source_name="sample",
+        title="ポムポムプリン30周年を記念したPOP-UP STOREを開催！（東京・京都）",
+        text=(
+            "開催期間 | 5月14日（木）～5月25日（月） "
+            "開催期間 | 6月5日（金）～6月17日（水）"
+        ),
+        fetched_at="2026-06-03T00:00:00+00:00",
+    )
+
+    items = heuristic_extract(doc)
+
+    assert items[0].kind == "event"
+    assert items[0].start_date == "2026-05-14"
+    assert items[0].end_date == "2026-06-17"
+
+
+def test_guess_japanese_date_ranges_supports_slash_dates():
+    ranges = guess_japanese_date_ranges("開催期間 2026/04/10 ～ 2026/12/31", default_year=2026)
+
+    assert ranges == [("2026-04-10", "2026-12-31")]
 
 
 def test_heuristic_extract_excludes_unrelated_text():
@@ -172,3 +222,7 @@ def test_merge_duplicates_keeps_first_available_image():
 
 def test_guess_first_japanese_date_uses_default_year_when_omitted():
     assert guess_first_japanese_date("6月1日（月）より予約開始", default_year=2026) == "2026-06-01"
+
+
+def test_guess_first_japanese_date_supports_slash_date():
+    assert guess_first_japanese_date("2026/06/01 ポムポムプリン発売中", default_year=2025) == "2026-06-01"

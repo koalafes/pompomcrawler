@@ -3,11 +3,17 @@ from __future__ import annotations
 import json
 import os
 from typing import Any
+from urllib.parse import urlparse
 
+from .aggregation import canonical_url
 from .config import DEFAULT_CONFIG, load_config
 from .dynamodb_store import DynamoScheduleStore
 from .extract import extract_items_from_documents
 from .fetchers import fetch_page_source, fetch_rss_source
+from .models import RawDocument
+
+
+DEFAULT_MAX_EXTRACT_DOCS_PER_RUN = 8
 
 
 CORS_HEADERS = {
@@ -66,9 +72,66 @@ def crawler_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         docs.extend(fetch_rss_source(source, keywords))
 
     store.put_raw_documents(docs)
-    items = extract_items_from_documents(docs, use_openai=True)
+    docs_to_extract = select_documents_for_extraction(
+        docs,
+        direct_url_ranks={str(source.get("url", "")): index for index, source in enumerate(config["pages"])},
+        successful_urls=store.successful_source_urls(),
+        failed_urls=store.failed_source_urls(),
+        max_docs=int(os.getenv("MAX_EXTRACT_DOCS_PER_RUN", DEFAULT_MAX_EXTRACT_DOCS_PER_RUN)),
+    )
+    items = extract_items_from_documents(docs_to_extract, use_openai=True)
     saved = store.put_schedule_items(items)
-    return {"raw_documents": len(docs), "extracted_items": len(items), "saved_items": saved}
+    return {
+        "raw_documents": len(docs),
+        "selected_documents": len(docs_to_extract),
+        "extracted_items": len(items),
+        "saved_items": saved,
+    }
+
+
+def select_documents_for_extraction(
+    docs: list[RawDocument],
+    *,
+    direct_url_ranks: dict[str, int],
+    successful_urls: set[str],
+    failed_urls: set[str],
+    max_docs: int,
+) -> list[RawDocument]:
+    successful = {canonical_url(url) for url in successful_urls}
+    failed = {canonical_url(url) for url in failed_urls}
+    candidates = [
+        doc
+        for doc in docs
+        if canonical_url(doc.url) not in successful or canonical_url(doc.url) in failed
+    ]
+    candidates.sort(key=lambda doc: extraction_priority(doc, direct_url_ranks))
+    return candidates[:max_docs] if max_docs > 0 else candidates
+
+
+def extraction_priority(doc: RawDocument, direct_url_ranks: dict[str, int]) -> tuple[int, int, str]:
+    canonical_direct_ranks = {canonical_url(url): rank for url, rank in direct_url_ranks.items()}
+    doc_url = canonical_url(doc.url)
+    direct_rank = canonical_direct_ranks.get(doc_url, 999_999)
+    if doc_url in canonical_direct_ranks and not is_broad_listing_url(doc_url):
+        return (0, direct_rank, doc.url)
+    if doc_url in canonical_direct_ranks:
+        return (1, direct_rank, doc.url)
+    return (2, direct_rank, doc.url)
+
+
+def is_broad_listing_url(url: str) -> bool:
+    parsed = urlparse(url)
+    path = parsed.path.rstrip("/")
+    return path in {
+        "",
+        "/",
+        "/news",
+        "/news/goods",
+        "/news/spots",
+        "/news/campaign",
+        "/news/shop",
+        "/characters/pompompurin",
+    }
 
 
 def response(status_code: int, body: dict[str, Any]) -> dict[str, Any]:

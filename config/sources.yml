@@ -18,12 +18,48 @@ pages:
     url: https://www.sanrio.co.jp/news/
   - name: サンリオ公式 グッズ
     url: https://www.sanrio.co.jp/news/goods/
+  - name: サンリオ公式 スポット
+    url: https://www.sanrio.co.jp/news/spots/
+  - name: サンリオ公式 キャンペーン
+    url: https://www.sanrio.co.jp/news/campaign/
+  - name: サンリオ公式 ショップ
+    url: https://www.sanrio.co.jp/news/shop/
+  - name: サンリオ公式 マリモクラフトPOP-UP
+    url: https://www.sanrio.co.jp/news/spots/pn-marimocraft-pop-up-store-20260511/
+  - name: サンリオ公式 びわ湖大花火大会
+    url: https://www.sanrio.co.jp/news/spots/pn-biwako-fireworks-20260601/
+  - name: サンリオ公式 メイトープリン
+    url: https://www.sanrio.co.jp/news/goods/pn-meito-pudding-20260601/
+  - name: サンリオ公式 モイストラボ
+    url: https://www.sanrio.co.jp/news/goods/pn-moistlabo-20260601/
+  - name: サンリオ公式 不二家コラボ
+    url: https://www.sanrio.co.jp/news/campaign/pn-fujiya-peko-20260529/
+  - name: サンリオ公式 ロフトPOP-UP
+    url: https://www.sanrio.co.jp/news/spots/pn-pop-up-store-loft-20260528/
+  - name: サンリオ公式 スウィートレイン
+    url: https://www.sanrio.co.jp/news/goods/mx-sweet-rain-collection-202606/
   - name: サンリオ企業ニュース
     url: https://corporate.sanrio.co.jp/news/
   - name: サンリオピューロランド
     url: https://www.puroland.jp/
+  - name: ピューロランド ポムポムプリン30周年
+    url: https://www.puroland.jp/event-campaign/pompompurin30th/
+  - name: ピューロランド ポムっと一息SNSキャンペーン
+    url: https://www.puroland.jp/event-campaign/pompompurin30th_sns_campaign/
+  - name: ピューロランド 30周年イルミネーション
+    url: https://www.puroland.jp/parade-show/pompompurin30th_illumination/
+  - name: ピューロランド いつでもプリン
+    url: https://www.puroland.jp/event-campaign/pompompurin30th_itsudemopurin/
+  - name: ピューロランド 30周年グッズ
+    url: https://www.puroland.jp/goods-feature/pompompurin30th/
+  - name: ピューロランド 30周年メニュー
+    url: https://www.puroland.jp/food-feature/food_pompompurin30th/
   - name: ハーモニーランド
     url: https://www.harmonyland.jp/
+  - name: PR TIMES サンリオフェス2026
+    url: https://prtimes.jp/main/html/rd/p/000000398.000043503.html
+  - name: 横浜ランドマークタワー サンリオフェス2026
+    url: https://yokohama-landmark.jp/plaza_news/detail.html?act=63419
   - name: PR TIMES 検索
     url: https://prtimes.jp/main/action.php?run=html&page=searchkey&search_word=%E3%83%9D%E3%83%A0%E3%83%9D%E3%83%A0%E3%83%97%E3%83%AA%E3%83%B3
   - name: atpress 検索
@@ -42,4 +78,3 @@ checklist_queries:
   - ポムポムプリン カフェ
   - ポムポムプリン 30周年
   - POMPOMPURIN new goods Japan
-

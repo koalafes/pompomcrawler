@@ -5,7 +5,7 @@ import json
 from pompomcrawler import aws_handlers
 from pompomcrawler.aws_keys import block_keys_for_item, schedule_item_id
 from pompomcrawler.dynamodb_store import DynamoScheduleStore
-from pompomcrawler.models import ScheduleItem
+from pompomcrawler.models import RawDocument, ScheduleItem
 
 
 class MemoryTable:
@@ -51,6 +51,16 @@ def memory_store() -> DynamoScheduleStore:
     return DynamoScheduleStore(MemoryTable("item_id"), MemoryTable("block_key"), MemoryTable("url"))
 
 
+def raw_doc(url: str) -> RawDocument:
+    return RawDocument(
+        url=url,
+        source_name="sample",
+        title="ポムポムプリン",
+        text="ポムポムプリン",
+        fetched_at="2026-06-03T00:00:00+00:00",
+    )
+
+
 def test_delete_blocks_future_reinsertion_and_restore_allows_it():
     store = memory_store()
     item = schedule_item()
@@ -69,6 +79,123 @@ def test_delete_blocks_future_reinsertion_and_restore_allows_it():
     assert restored["status"] == "needs_review"
     assert store.deleted_keys_table.items == {}
     assert store.put_schedule_items([item]) == 1
+
+
+def test_put_schedule_items_replaces_failed_record_for_same_source_url():
+    store = memory_store()
+    failed = schedule_item(title="FETCH_ERROR: ポムポムプリン", url="https://example.com/event")
+    failed.start_date = ""
+    failed.end_date = ""
+    failed.confidence = 0.2
+    failed.review_reason = "OpenAI extraction failed: openai package could not be imported"
+    fresh = schedule_item(title="ポムポムプリン イベント", url="https://example.com/event")
+
+    store.put_schedule_items([failed])
+    failed_id = schedule_item_id(failed)
+    store.put_schedule_items([fresh])
+    fresh_id = schedule_item_id(fresh)
+
+    assert failed_id not in store.schedule_table.items
+    assert fresh_id in store.schedule_table.items
+
+
+def test_public_items_aggregate_existing_collection_records():
+    store = memory_store()
+    first = schedule_item(
+        title="POMPOMPURIN 30th Anniversary クッション",
+        url="https://www.puroland.jp/goods-feature/pompompurin30th/",
+    )
+    second = schedule_item(
+        title="POMPOMPURIN 30th Anniversary ポーチ",
+        url="https://www.puroland.jp/goods/pompompurin30th_008/",
+    )
+
+    store.put_schedule_items([first])
+    store.put_schedule_items([second])
+    public_items = store.public_items()
+
+    assert len(public_items) == 1
+    assert public_items[0]["title"] == "POMPOMPURIN 30th Anniversary Goods"
+    assert public_items[0]["item_id"]
+
+
+def test_public_items_keep_unique_ids_for_overlapping_collection_sources():
+    store = memory_store()
+    main = schedule_item(
+        title="POMPOMPURIN 30th Anniversary",
+        url="https://www.puroland.jp/event-campaign/pompompurin30th/",
+    )
+    goods = schedule_item(
+        title="POMPOMPURIN 30th Anniversary Goods",
+        url="https://www.puroland.jp/event-campaign/pompompurin30th/",
+    )
+
+    store.put_schedule_items([main, goods])
+    item_ids = [item["item_id"] for item in store.public_items()]
+
+    assert len(item_ids) == len(set(item_ids))
+
+
+def test_select_documents_for_extraction_prioritizes_direct_detail_pages():
+    docs = [
+        raw_doc("https://www.sanrio.co.jp/news/"),
+        raw_doc("https://example.com/discovered"),
+        raw_doc("https://www.sanrio.co.jp/news/spots/pn-biwako-fireworks-20260601/"),
+    ]
+
+    selected = aws_handlers.select_documents_for_extraction(
+        docs,
+        direct_url_ranks={
+            "https://www.sanrio.co.jp/news/": 0,
+            "https://www.sanrio.co.jp/news/spots/pn-biwako-fireworks-20260601/": 1,
+        },
+        successful_urls=set(),
+        failed_urls=set(),
+        max_docs=2,
+    )
+
+    assert [doc.url for doc in selected] == [
+        "https://www.sanrio.co.jp/news/spots/pn-biwako-fireworks-20260601/",
+        "https://www.sanrio.co.jp/news/",
+    ]
+
+
+def test_select_documents_for_extraction_skips_successful_urls_unless_failed():
+    docs = [
+        raw_doc("https://example.com/success"),
+        raw_doc("https://example.com/retry"),
+        raw_doc("https://example.com/new"),
+    ]
+
+    selected = aws_handlers.select_documents_for_extraction(
+        docs,
+        direct_url_ranks={},
+        successful_urls={"https://example.com/success", "https://example.com/retry"},
+        failed_urls={"https://example.com/retry"},
+        max_docs=10,
+    )
+
+    assert {doc.url for doc in selected} == {"https://example.com/retry", "https://example.com/new"}
+
+
+def test_select_documents_for_extraction_skips_successful_anchor_variants():
+    docs = [
+        raw_doc("https://www.puroland.jp/event-campaign/pompompurin30th/#h010300"),
+        raw_doc("https://www.puroland.jp/event-campaign/pompompurin30th/#h010600"),
+        raw_doc("https://www.puroland.jp/event-campaign/pompompurin30th_sns_campaign/"),
+    ]
+
+    selected = aws_handlers.select_documents_for_extraction(
+        docs,
+        direct_url_ranks={},
+        successful_urls={"https://www.puroland.jp/event-campaign/pompompurin30th/"},
+        failed_urls=set(),
+        max_docs=10,
+    )
+
+    assert [doc.url for doc in selected] == [
+        "https://www.puroland.jp/event-campaign/pompompurin30th_sns_campaign/"
+    ]
 
 
 def test_public_api_hides_excluded_and_admin_delete_requires_group(monkeypatch):

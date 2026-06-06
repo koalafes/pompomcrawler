@@ -9,6 +9,7 @@ from difflib import SequenceMatcher
 from pathlib import Path
 from typing import Iterable
 
+from .aggregation import merge_related_items
 from .models import RawDocument, ScheduleItem
 
 
@@ -67,7 +68,9 @@ Return JSON only according to the schema.
 Prefer recall over precision: keep weak but plausible Pom Pom Purin goods, event, campaign, reservation, collaboration, cafe, store, or limited-time candidates.
 Use ISO dates YYYY-MM-DD when dates are explicit. Leave unknown dates as empty strings.
 Set status to needs_review unless the text is clearly unrelated, in which case use excluded.
-Do not invent missing dates, venues, sellers, or product names."""
+Do not invent missing dates, venues, sellers, or product names.
+When a page is an anniversary, campaign, feature, goods-feature, food-feature, pop-up, fair, shop, or collection page, return one schedule item for the overall campaign or sales collection.
+Do not return one item per SKU, prize, menu item, color variant, or goods detail page; summarize representative examples in notes instead."""
 
 
 def load_dotenv_if_available() -> None:
@@ -98,9 +101,11 @@ def extract_items_from_documents(docs: Iterable[RawDocument], use_openai: bool =
         try:
             doc_items = extractor.extract(doc) if extractor else heuristic_extract(doc)
         except Exception as exc:
-            doc_items = [fallback_item(doc, f"OpenAI extraction failed: {exc}")]
-        items.extend(doc_items)
-    return items
+            doc_items = heuristic_extract(doc)
+            for item in doc_items:
+                item.review_reason = f"{item.review_reason} OpenAI extraction failed: {exc}"
+        items.extend(merge_related_items(doc_items))
+    return merge_related_items(items)
 
 
 @dataclass
@@ -111,7 +116,7 @@ class OpenAIExtractor:
         try:
             from openai import OpenAI
         except ImportError as exc:
-            raise RuntimeError("openai package is not installed") from exc
+            raise RuntimeError(f"openai package could not be imported: {exc}") from exc
 
         client = OpenAI(timeout=30.0, max_retries=1)
         user_content = (
@@ -185,17 +190,32 @@ def heuristic_extract(doc: RawDocument) -> list[ScheduleItem]:
     if re.search(r"予約開始|予約受付|予約販売", haystack):
         kind = "reservation"
 
-    guessed_date = guess_first_japanese_date(doc.title) or guess_first_japanese_date(doc.text)
-    start_date = guessed_date if kind in {"event", "campaign"} else ""
-    release_date = guessed_date if kind == "product" else ""
-    reservation_start = guessed_date if kind == "reservation" else ""
+    default_year = default_year_for_document(doc)
+    date_ranges = guess_japanese_date_ranges(haystack, default_year=default_year)
+    guessed_date = guess_first_japanese_date(doc.title, default_year=default_year) or guess_first_japanese_date(
+        doc.text,
+        default_year=default_year,
+    )
+    start_date = ""
+    end_date = ""
+    release_date = ""
+    reservation_start = ""
+    if date_ranges:
+        start_date = min(start for start, _ in date_ranges)
+        end_date = max(end for _, end in date_ranges)
+    elif kind in {"event", "campaign"}:
+        start_date = guessed_date
+    if kind == "product":
+        release_date = guessed_date
+    if kind == "reservation":
+        reservation_start = guessed_date
 
     return [
         ScheduleItem(
             title=doc.title or first_sentence(doc.text) or doc.url,
             kind=kind,
             start_date=start_date,
-            end_date="",
+            end_date=end_date,
             release_date=release_date,
             reservation_start=reservation_start,
             seller_or_venue="",
@@ -210,24 +230,68 @@ def heuristic_extract(doc: RawDocument) -> list[ScheduleItem]:
     ]
 
 
-def guess_first_japanese_date(text: str, default_year: int | None = None) -> str:
+DATE_PATTERN = re.compile(
+    r"(?:(?P<year>20\d{2})\s*(?:年|[/-])\s*)?"
+    r"(?P<month>1[0-2]|0?[1-9])\s*(?P<separator>月|[/-])\s*"
+    r"(?P<day>3[01]|[12]\d|0?[1-9])\s*(?:日)?"
+)
+RANGE_MARKERS = ("～", "〜", "-", "から")
+
+
+def default_year_for_document(doc: RawDocument) -> int:
+    if re.match(r"20\d{2}", doc.fetched_at or ""):
+        return int(doc.fetched_at[:4])
+    return date.today().year
+
+
+def guess_japanese_dates(text: str, default_year: int | None = None) -> list[str]:
     default_year = default_year or date.today().year
-    patterns = [
-        re.compile(r"(?P<year>20\d{2})年\s*(?P<month>1[0-2]|0?[1-9])月\s*(?P<day>3[01]|[12]\d|0?[1-9])日"),
-        re.compile(r"(?P<month>1[0-2]|0?[1-9])月\s*(?P<day>3[01]|[12]\d|0?[1-9])日"),
-    ]
-    for pattern in patterns:
-        match = pattern.search(text)
-        if not match:
-            continue
-        year = int(match.groupdict().get("year") or default_year)
+    current_year = default_year
+    dates: list[str] = []
+    for match in DATE_PATTERN.finditer(text):
+        year_text = match.group("year")
+        if year_text:
+            current_year = int(year_text)
         month = int(match.group("month"))
         day = int(match.group("day"))
         try:
-            return date(year, month, day).isoformat()
+            parsed = date(current_year, month, day).isoformat()
         except ValueError:
-            return ""
-    return ""
+            continue
+        dates.append(parsed)
+    return dates
+
+
+def guess_japanese_date_ranges(text: str, default_year: int | None = None) -> list[tuple[str, str]]:
+    default_year = default_year or date.today().year
+    current_year = default_year
+    matches = []
+    for match in DATE_PATTERN.finditer(text):
+        year_text = match.group("year")
+        if year_text:
+            current_year = int(year_text)
+        try:
+            parsed = date(current_year, int(match.group("month")), int(match.group("day"))).isoformat()
+        except ValueError:
+            continue
+        matches.append((match, parsed))
+
+    ranges: list[tuple[str, str]] = []
+    for (left_match, start), (right_match, end) in zip(matches, matches[1:]):
+        between = text[left_match.end() : right_match.start()]
+        if len(between) > 40:
+            continue
+        if not any(marker in between for marker in RANGE_MARKERS):
+            continue
+        if end < start:
+            continue
+        ranges.append((start, end))
+    return ranges
+
+
+def guess_first_japanese_date(text: str, default_year: int | None = None) -> str:
+    dates = guess_japanese_dates(text, default_year=default_year)
+    return dates[0] if dates else ""
 
 
 def fallback_item(doc: RawDocument, reason: str, status: str = "needs_review", confidence: float = 0.2) -> ScheduleItem:

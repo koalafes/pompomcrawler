@@ -46,6 +46,10 @@ def test_export_schedule_writes_csv(tmp_path: Path):
     assert "24 * 60 * 60 * 1000" in html
     assert "function updateDataSummary" in html
     assert "最終データ更新" in html
+    assert "function renderLoading" in html
+    assert "skeleton-shimmer" in html
+    assert "予定を読み込み中" in html
+    assert "function renderLoadError" in html
 
 
 def test_export_calendar_html_can_use_aws_runtime_without_embedded_items(tmp_path: Path):
