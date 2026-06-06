@@ -94,6 +94,12 @@ POMPOM_NEW_LABEL_AFTER=2026-05-31T00:00:00+00:00
 
 `POMPOM_NEW_LABEL_AFTER` 以降に追加された予定は、追加から24時間だけ「新着」ラベルを表示します。
 
+## Automatic Amplify deploy
+
+`main` に push すると、GitHub Actions の `Deploy Amplify` workflow が `docs/index.html` を生成し、既存の Amplify Hosting アプリへ手動デプロイ API で反映します。Amplify アプリ自体は GitHub リポジトリ接続ではなく、GitHub Actions から `CreateDeployment` / `StartDeployment` を呼び出す方式です。
+
+AWS 認証は GitHub OIDC を使います。CDK スタックが `pompomcrawler-github-amplify-deploy` ロールを作成し、`koalafes/pompomcrawler` の `main` ブランチからだけ AssumeRole できるように制限しています。長期アクセスキーを GitHub Secrets に置く必要はありません。
+
 既存データの初回投入は、CDK 出力のテーブル名を環境変数に入れて実行します。
 
 ```bash

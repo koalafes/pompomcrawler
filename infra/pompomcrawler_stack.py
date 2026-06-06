@@ -227,10 +227,52 @@ class PompomCrawlerStack(Stack):
             ),
         )
 
+        amplify_app_id = str(self.node.try_get_context("amplify_app_id") or "d1tvp4oub2aan6")
+        amplify_branch_name = str(self.node.try_get_context("amplify_branch_name") or "main")
+        github_repo = str(self.node.try_get_context("github_repo") or "koalafes/pompomcrawler")
+        github_branch = str(self.node.try_get_context("github_branch") or "main")
+        github_oidc_provider = iam.OpenIdConnectProvider(
+            self,
+            "GitHubOidcProvider",
+            url="https://token.actions.githubusercontent.com",
+            client_ids=["sts.amazonaws.com"],
+        )
+        amplify_branch_arn = Stack.of(self).format_arn(
+            service="amplify",
+            resource="apps",
+            resource_name=f"{amplify_app_id}/branches/{amplify_branch_name}",
+        )
+        github_amplify_deploy_role = iam.Role(
+            self,
+            "GitHubAmplifyDeployRole",
+            role_name="pompomcrawler-github-amplify-deploy",
+            assumed_by=iam.FederatedPrincipal(
+                github_oidc_provider.open_id_connect_provider_arn,
+                conditions={
+                    "StringEquals": {
+                        "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
+                        "token.actions.githubusercontent.com:sub": f"repo:{github_repo}:ref:refs/heads/{github_branch}",
+                    }
+                },
+                assume_role_action="sts:AssumeRoleWithWebIdentity",
+            ),
+        )
+        github_amplify_deploy_role.add_to_policy(
+            iam.PolicyStatement(
+                actions=[
+                    "amplify:CreateDeployment",
+                    "amplify:StartDeployment",
+                    "amplify:GetJob",
+                ],
+                resources=[amplify_branch_arn],
+            )
+        )
+
         CfnOutput(self, "ApiBaseUrl", value=api.api_endpoint)
         CfnOutput(self, "CognitoUserPoolId", value=user_pool.user_pool_id)
         CfnOutput(self, "CognitoUserPoolClientId", value=user_pool_client.user_pool_client_id)
         CfnOutput(self, "CognitoDomain", value=f"https://{domain_prefix}.auth.{self.region}.amazoncognito.com")
+        CfnOutput(self, "GitHubAmplifyDeployRoleArn", value=github_amplify_deploy_role.role_arn)
         CfnOutput(self, "ScheduleItemsTable", value=schedule_items.table_name)
         CfnOutput(self, "DeletedScheduleKeysTable", value=deleted_keys.table_name)
         CfnOutput(self, "RawDocumentsTable", value=raw_documents.table_name)
