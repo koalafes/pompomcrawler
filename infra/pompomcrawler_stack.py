@@ -242,6 +242,8 @@ class PompomCrawlerStack(Stack):
             resource="apps",
             resource_name=f"{amplify_app_id}/branches/{amplify_branch_name}",
         )
+        amplify_deployment_arn = f"{amplify_branch_arn}/deployments/*"
+        amplify_job_arn = f"{amplify_branch_arn}/jobs/*"
         github_amplify_deploy_role = iam.Role(
             self,
             "GitHubAmplifyDeployRole",
@@ -264,7 +266,7 @@ class PompomCrawlerStack(Stack):
                     "amplify:StartDeployment",
                     "amplify:GetJob",
                 ],
-                resources=[amplify_branch_arn],
+                resources=[amplify_branch_arn, amplify_deployment_arn, amplify_job_arn],
             )
         )
 
