@@ -425,14 +425,20 @@ def render_html(
       box-shadow: 0 4px 10px rgba(53, 36, 23, .05);
     }}
     .event-pill strong {{
-      display: block;
+      display: flex;
+      align-items: center;
+      gap: 7px;
       overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
       font-size: 12px;
       letter-spacing: 0;
     }}
-    .event-pill span {{
+    .event-title {{
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }}
+    .event-pill > span {{
       display: block;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -573,26 +579,13 @@ def render_html(
       overflow-wrap: anywhere;
     }}
     .new-badge {{
-      display: inline-flex;
-      align-items: center;
-      min-height: 22px;
-      padding: 0 7px;
+      width: 8px;
+      height: 8px;
+      display: inline-block;
+      flex: 0 0 auto;
       border-radius: 999px;
       background: #e5484d;
-      color: #fffdf8;
-      font-size: 11px;
-      font-weight: 900;
-      letter-spacing: 0;
-      line-height: 1;
-    }}
-    .event-pill.is-new {{
-      box-shadow: inset 3px 0 0 #e5484d;
-    }}
-    .event-pill .new-badge {{
-      margin-left: 4px;
-      min-height: 18px;
-      padding: 0 5px;
-      font-size: 10px;
+      box-shadow: 0 0 0 3px rgba(229, 72, 77, .14);
       vertical-align: 1px;
     }}
     .detail-text {{ margin: 0; color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }}
@@ -870,12 +863,14 @@ def render_html(
     .mobile-event.campaign {{ border-left-color: var(--berry); background: #ffeaf0; }}
     .mobile-event.reservation {{ border-left-color: var(--leaf); background: #ecf8e9; }}
     .mobile-event strong {{
-      display: block;
+      display: flex;
+      align-items: center;
+      gap: 7px;
       font-size: 14px;
       line-height: 1.35;
       letter-spacing: 0;
     }}
-    .mobile-event span {{
+    .mobile-event-content > span {{
       display: block;
       margin-top: 5px;
       color: var(--muted);
@@ -1478,7 +1473,7 @@ def render_html(
     function eventButton(item) {{
       const button = document.createElement("button");
       button.className = `event-pill ${{item.kind}}${{isNewItem(item) ? " is-new" : ""}}`;
-      button.innerHTML = `<strong>${{escapeHtml(item.title)}}${{newBadge(item)}}</strong><span>${{escapeHtml(item.kindLabel)}} / ${{escapeHtml(dateSummary(item))}}</span>`;
+      button.innerHTML = `<strong><span class="event-title">${{escapeHtml(item.title)}}</span>${{newBadge(item)}}</strong><span>${{escapeHtml(item.kindLabel)}} / ${{escapeHtml(dateSummary(item))}}</span>`;
       button.addEventListener("click", () => openDetail(item));
       return button;
     }}
@@ -1606,7 +1601,7 @@ def render_html(
       button.innerHTML = `
         ${{imageMarkup(item, "event-image mobile-thumb")}}
         <div class="mobile-event-content">
-          <strong>${{escapeHtml(item.title)}}</strong>
+          <strong><span class="event-title">${{escapeHtml(item.title)}}</span>${{newBadge(item)}}</strong>
           <span>${{escapeHtml(dateSummary(item))}} / ${{escapeHtml(item.kindLabel)}}</span>
         </div>
       `;
@@ -1672,7 +1667,7 @@ def render_html(
       return `<p class="admin-note">${{escapeHtml(rows.join(" / "))}}</p>`;
     }}
     function newBadge(item) {{
-      return isNewItem(item) ? `<span class="new-badge">新着</span>` : "";
+      return isNewItem(item) ? `<span class="new-badge" title="新着" aria-label="新着"></span>` : "";
     }}
     function isNewItem(item) {{
       if (!item.createdAt) return false;
