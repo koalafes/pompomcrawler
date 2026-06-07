@@ -44,6 +44,7 @@ def build_parser() -> argparse.ArgumentParser:
     html_parser.add_argument("--output-dir", default="outputs", help="Directory for generated HTML")
     html_parser.add_argument("--filename", default="pompompurin_calendar.html", help="Generated HTML filename")
     html_parser.add_argument("--aws-runtime", action="store_true", help="Load schedule items from AWS API instead of embedding local data")
+    html_parser.add_argument("--admin", action="store_true", help="Generate the Cognito-protected admin calendar page")
     subparsers.add_parser("migrate-aws", help="Migrate local JSONL data to AWS DynamoDB tables")
     return parser
 
@@ -122,6 +123,7 @@ def main(argv: list[str] | None = None) -> int:
             past_days=args.past_days,
             aws_runtime=args.aws_runtime,
             filename=args.filename,
+            admin_mode=args.admin,
         )
         print(f"Wrote HTML: {html_path}")
         return 0

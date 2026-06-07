@@ -35,6 +35,7 @@ def export_calendar_html(
     past_days: int = DEFAULT_PAST_DAYS,
     aws_runtime: bool = False,
     filename: str = "pompompurin_calendar.html",
+    admin_mode: bool = False,
 ) -> Path:
     output_dir.mkdir(parents=True, exist_ok=True)
     merged = merge_duplicates(items)
@@ -48,6 +49,7 @@ def export_calendar_html(
             past_days=past_days,
             filter_window=filter_window,
             aws_runtime=aws_runtime,
+            admin_mode=admin_mode,
         ),
         encoding="utf-8",
     )
@@ -93,18 +95,49 @@ def runtime_config() -> dict[str, str]:
     }
 
 
-def render_html(items: list[dict], *, past_days: int, filter_window: bool, aws_runtime: bool = False) -> str:
+def render_html(
+    items: list[dict],
+    *,
+    past_days: int,
+    filter_window: bool,
+    aws_runtime: bool = False,
+    admin_mode: bool = False,
+) -> str:
     config = runtime_config()
     data_json = "[]" if aws_runtime else json.dumps(items, ensure_ascii=False)
     config_json = json.dumps(config, ensure_ascii=False)
     generated_at = datetime.now().strftime("%Y-%m-%d %H:%M")
     window_text = f"直近{past_days}日＋未来" if filter_window else "全期間"
+    page_title = "ポムポムプリン予定帳 管理" if admin_mode else "ポムポムプリン予定帳"
+    body_class = "admin-mode" if admin_mode else "public-mode"
+    status_filter = (
+        """
+        <label class="field"><span>状態</span><select id="statusFilter"><option value="active">公開中</option><option value="all">すべて</option></select></label>"""
+        if admin_mode
+        else ""
+    )
+    auth_controls = (
+        """
+        <div class="auth-controls">
+          <span class="auth-status" id="authStatus"></span>
+          <button class="text-button" id="loginButton" type="button">ログイン</button>
+          <button class="text-button" id="logoutButton" type="button" hidden>ログアウト</button>
+        </div>"""
+        if admin_mode
+        else ""
+    )
+    admin_action = (
+        """
+      <button class="danger-button" id="adminActionButton" type="button" hidden>削除</button>"""
+        if admin_mode
+        else ""
+    )
     return f"""<!doctype html>
 <html lang="ja">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>ポムポムプリン予定帳</title>
+  <title>{escape(page_title)}</title>
   <style>
     :root {{
       color-scheme: light;
@@ -217,7 +250,7 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool, aws_r
     .toolbar {{
       grid-column: 1 / -1;
       display: grid;
-      grid-template-columns: minmax(170px, 240px) minmax(0, 1fr);
+      grid-template-columns: minmax(170px, 240px);
       gap: 12px;
       align-items: center;
       padding: 12px;
@@ -225,6 +258,9 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool, aws_r
       border: 1px solid rgba(122, 75, 39, .12);
       border-radius: 8px;
       box-shadow: 0 12px 30px rgba(122, 75, 39, .08);
+    }}
+    .admin-mode .toolbar {{
+      grid-template-columns: minmax(170px, 240px) minmax(170px, 240px) minmax(0, 1fr);
     }}
     .field {{
       display: flex;
@@ -584,6 +620,13 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool, aws_r
     .tag.review {{ background: #ffe7a1; }}
     .tag.confirmed {{ background: #dff4e7; color: #2f7652; }}
     .tag.excluded {{ background: #eee8dc; color: #8d7b68; }}
+    .admin-note {{
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+      overflow-wrap: anywhere;
+    }}
     .new-badge {{
       display: inline-flex;
       align-items: center;
@@ -627,6 +670,13 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool, aws_r
       padding: 28px 14px;
       color: var(--muted);
       text-align: center;
+    }}
+    .login-required-panel {{
+      grid-column: 1 / -1;
+      min-height: 280px;
+      display: grid;
+      place-items: center;
+      font-weight: 900;
     }}
     .loading-copy {{
       display: inline-flex;
@@ -994,13 +1044,13 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool, aws_r
     }}
   </style>
 </head>
-<body>
+<body class="{body_class}">
   <div class="app-shell">
     <header class="topbar">
       <div class="topbar-inner">
         <div class="brand">
           <div>
-            <h1>ポムポムプリン予定帳</h1>
+            <h1>{escape(page_title)}</h1>
             <p id="dataSummary">{escape(generated_at)} / {escape(window_text)}</p>
           </div>
         </div>
@@ -1014,11 +1064,8 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool, aws_r
     <main class="layout">
       <section class="toolbar" aria-label="絞り込み">
         <label class="field"><span>種別</span><select id="kindFilter"><option value="all">すべて</option></select></label>
-        <div class="auth-controls">
-          <span class="auth-status" id="authStatus"></span>
-          <button class="text-button" id="loginButton" type="button">ログイン</button>
-          <button class="text-button" id="logoutButton" type="button" hidden>ログアウト</button>
-        </div>
+        {status_filter}
+        {auth_controls}
       </section>
       <section class="calendar-panel" aria-label="月間カレンダー">
         <div class="calendar-head" id="calendarTitle"></div>
@@ -1043,18 +1090,20 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool, aws_r
   <dialog id="detailDialog">
     <div class="modal-body" id="modalBody"></div>
     <div class="modal-actions">
-      <button class="danger-button" id="deleteItemButton" type="button" hidden>削除</button>
+      {admin_action}
       <button class="text-button" id="closeDialog" type="button">閉じる</button>
     </div>
   </dialog>
   <script>
     const CONFIG = {config_json};
+    const ADMIN_MODE = {str(admin_mode).lower()};
     const FALLBACK_ITEMS = {data_json};
     let ITEMS = [];
     let selectedDetailItem = null;
     const state = {{
       current: initialMonth([]),
       kind: "all",
+      status: "active",
       selectedDate: ""
     }};
     const weekdays = ["日", "月", "火", "水", "木", "金", "土"];
@@ -1071,10 +1120,11 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool, aws_r
     const agendaSubtitle = document.getElementById("agendaSubtitle");
     const detailDialog = document.getElementById("detailDialog");
     const modalBody = document.getElementById("modalBody");
+    const statusFilter = document.getElementById("statusFilter");
     const authStatus = document.getElementById("authStatus");
     const loginButton = document.getElementById("loginButton");
     const logoutButton = document.getElementById("logoutButton");
-    const deleteItemButton = document.getElementById("deleteItemButton");
+    const adminActionButton = document.getElementById("adminActionButton");
     const dataSummary = document.getElementById("dataSummary");
 
     document.getElementById("prevMonth").addEventListener("click", () => shiftMonth(-1));
@@ -1088,10 +1138,16 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool, aws_r
       state.kind = event.target.value;
       render();
     }});
+    if (statusFilter) {{
+      statusFilter.addEventListener("change", event => {{
+        state.status = event.target.value;
+        render();
+      }});
+    }}
     document.getElementById("closeDialog").addEventListener("click", () => detailDialog.close());
-    loginButton.addEventListener("click", login);
-    logoutButton.addEventListener("click", logout);
-    deleteItemButton.addEventListener("click", deleteSelectedItem);
+    if (loginButton) loginButton.addEventListener("click", login);
+    if (logoutButton) logoutButton.addEventListener("click", logout);
+    if (adminActionButton) adminActionButton.addEventListener("click", handleAdminAction);
 
     fillFilters();
     initialize();
@@ -1099,7 +1155,13 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool, aws_r
     async function initialize() {{
       renderLoading();
       await completeLoginIfNeeded();
-      updateAuthControls();
+      if (ADMIN_MODE) {{
+        updateAuthControls();
+        if (!authSession()) {{
+          renderLoginRequired();
+          return;
+        }}
+      }}
       try {{
         ITEMS = await loadItems();
         updateDataSummary();
@@ -1212,6 +1274,17 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool, aws_r
       agenda.innerHTML = `<div class="empty">${{escapeHtml(error?.message || "予定を読み込めませんでした")}}</div>`;
       mobileSelected.innerHTML = `<div class="empty">${{escapeHtml(error?.message || "予定を読み込めませんでした")}}</div>`;
     }}
+    function renderLoginRequired() {{
+      dataSummary.textContent = "管理者ログインが必要です";
+      title.innerHTML = "";
+      grid.innerHTML = `<div class="empty login-required-panel">管理ページを表示するにはログインしてください</div>`;
+      agendaTitle.textContent = "管理者ログイン";
+      agendaSubtitle.textContent = "Cognito の calendar-admin 権限が必要です";
+      agenda.innerHTML = `<div class="empty">ログイン後、予定の削除と復旧ができます。</div>`;
+      mobileWeekdays.innerHTML = "";
+      mobileGrid.innerHTML = "";
+      mobileSelected.innerHTML = `<div class="empty">ログインしてください</div>`;
+    }}
     function updateDataSummary() {{
       const latest = ITEMS
         .map(item => item.updatedAt || item.createdAt)
@@ -1234,7 +1307,14 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool, aws_r
     }}
     async function loadItems() {{
       if (!apiBaseUrl()) return FALLBACK_ITEMS.map(normalizeItem);
-      const response = await fetch(`${{apiBaseUrl()}}/items`);
+      const headers = {{}};
+      const endpoint = ADMIN_MODE ? "/admin/items" : "/items";
+      if (ADMIN_MODE) {{
+        const session = authSession();
+        if (!session) throw new Error("管理者ログインが必要です");
+        headers.authorization = `Bearer ${{session.id_token}}`;
+      }}
+      const response = await fetch(`${{apiBaseUrl()}}${{endpoint}}`, {{ headers }});
       if (!response.ok) throw new Error(`Failed to load items: ${{response.status}}`);
       const payload = await response.json();
       return (payload.items || []).map(normalizeItem);
@@ -1267,7 +1347,10 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool, aws_r
         reviewReason: item.reviewReason || item.review_reason || "",
         notes: item.notes || "",
         createdAt: item.createdAt || item.created_at || "",
-        updatedAt: item.updatedAt || item.updated_at || ""
+        updatedAt: item.updatedAt || item.updated_at || "",
+        deletedAt: item.deletedAt || item.deleted_at || "",
+        deletedBy: item.deletedBy || item.deleted_by || "",
+        deleteReason: item.deleteReason || item.delete_reason || ""
       }};
     }}
     function firstPresentDate(...values) {{
@@ -1300,19 +1383,22 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool, aws_r
       }}
     }}
     function updateAuthControls() {{
+      if (!ADMIN_MODE || !loginButton || !logoutButton || !authStatus) return;
       const session = authSession();
       const enabled = Boolean(apiBaseUrl() && cognitoDomain() && CONFIG.cognitoClientId);
       loginButton.hidden = !enabled || Boolean(session);
       logoutButton.hidden = !enabled || !session;
-      authStatus.textContent = !enabled ? "" : session ? "管理者ログイン中" : "管理操作はログインが必要";
+      authStatus.textContent = !enabled ? "" : session ? "管理者ログイン中" : "管理者ログインが必要";
     }}
     async function login() {{
+      if (!ADMIN_MODE) return;
       if (!cognitoDomain() || !CONFIG.cognitoClientId) return;
       const verifier = randomString(64);
       const challenge = await pkceChallenge(verifier);
       const stateValue = randomString(32);
       sessionStorage.setItem("pompomPkceVerifier", verifier);
       sessionStorage.setItem("pompomAuthState", stateValue);
+      sessionStorage.setItem("pompomLoginReturnPath", window.location.origin + window.location.pathname);
       const params = new URLSearchParams({{
         response_type: "code",
         client_id: CONFIG.cognitoClientId,
@@ -1351,9 +1437,16 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool, aws_r
       }}));
       sessionStorage.removeItem("pompomPkceVerifier");
       sessionStorage.removeItem("pompomAuthState");
+      const returnPath = sessionStorage.getItem("pompomLoginReturnPath") || redirectUri();
+      sessionStorage.removeItem("pompomLoginReturnPath");
+      if (returnPath !== window.location.href) {{
+        window.location.href = returnPath;
+        return;
+      }}
       window.history.replaceState(null, "", redirectUri());
     }}
     function logout() {{
+      if (!ADMIN_MODE) return;
       localStorage.removeItem("pompomAuth");
       updateAuthControls();
       const domain = cognitoDomain();
@@ -1379,7 +1472,10 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool, aws_r
     }}
     function filteredItems() {{
       return ITEMS.filter(item => {{
-        return item.status !== "excluded" && (state.kind === "all" || item.kind === state.kind);
+        const matchesStatus = ADMIN_MODE
+          ? state.status === "all" || item.status !== "excluded"
+          : item.status !== "excluded";
+        return matchesStatus && (state.kind === "all" || item.kind === state.kind);
       }});
     }}
     function render() {{
@@ -1624,20 +1720,37 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool, aws_r
     }}
     function openDetail(item) {{
       selectedDetailItem = item;
-      deleteItemButton.hidden = !(apiBaseUrl() && authSession() && item.itemId);
+      if (adminActionButton) {{
+        adminActionButton.hidden = !(ADMIN_MODE && apiBaseUrl() && authSession() && item.itemId);
+        adminActionButton.textContent = item.status === "excluded" ? "復旧" : "削除";
+      }}
       modalBody.innerHTML = `
         ${{imageMarkup(item, "event-image modal-image")}}
         <h2>${{escapeHtml(item.title)}}</h2>
         <div class="meta">
           <span class="tag">${{escapeHtml(item.kindLabel)}}</span>
+          ${{ADMIN_MODE ? `<span class="tag ${{escapeAttr(item.status)}}">${{escapeHtml(item.statusLabel)}}</span>` : ""}}
           ${{newBadge(item)}}
         </div>
         <p class="detail-text">${{escapeHtml(dateSummary(item))}}</p>
         <p class="detail-text">${{escapeHtml(item.sellerOrVenue || "")}}</p>
         <p class="detail-text">${{escapeHtml(item.notes || "")}}</p>
+        ${{adminDetailNote(item)}}
         ${{sourceLinks(item.sourceUrl)}}
       `;
       detailDialog.showModal();
+    }}
+    function adminDetailNote(item) {{
+      if (!ADMIN_MODE) return "";
+      const rows = [];
+      if (item.createdAt) rows.push(`作成: ${{item.createdAt}}`);
+      if (item.updatedAt) rows.push(`更新: ${{item.updatedAt}}`);
+      if (item.deletedAt) rows.push(`削除: ${{item.deletedAt}}`);
+      if (item.deletedBy) rows.push(`削除者: ${{item.deletedBy}}`);
+      if (item.deleteReason) rows.push(`理由: ${{item.deleteReason}}`);
+      if (item.reviewReason) rows.push(`確認メモ: ${{item.reviewReason}}`);
+      if (!rows.length) return "";
+      return `<p class="admin-note">${{escapeHtml(rows.join(" / "))}}</p>`;
     }}
     function newBadge(item) {{
       return isNewItem(item) ? `<span class="new-badge">新着</span>` : "";
@@ -1653,6 +1766,13 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool, aws_r
       }}
       const ageMs = Date.now() - created;
       return ageMs >= 0 && ageMs <= 24 * 60 * 60 * 1000;
+    }}
+    async function handleAdminAction() {{
+      if (!selectedDetailItem || selectedDetailItem.status === "excluded") {{
+        await restoreSelectedItem();
+        return;
+      }}
+      await deleteSelectedItem();
     }}
     async function deleteSelectedItem() {{
       const item = selectedDetailItem;
@@ -1671,7 +1791,30 @@ def render_html(items: list[dict], *, past_days: int, filter_window: bool, aws_r
         window.alert(response.status === 403 ? "管理者権限がありません" : "削除に失敗しました");
         return;
       }}
-      ITEMS = ITEMS.filter(candidate => candidate.itemId !== item.itemId);
+      const payload = await response.json();
+      const deleted = normalizeItem(payload.item || {{ ...item, status: "excluded" }});
+      ITEMS = ITEMS.map(candidate => candidate.itemId === item.itemId ? deleted : candidate);
+      detailDialog.close();
+      render();
+    }}
+    async function restoreSelectedItem() {{
+      const item = selectedDetailItem;
+      const session = authSession();
+      if (!item || !item.itemId || !session || !apiBaseUrl()) return;
+      const response = await fetch(`${{apiBaseUrl()}}/admin/items/${{encodeURIComponent(item.itemId)}}/restore`, {{
+        method: "POST",
+        headers: {{
+          "authorization": `Bearer ${{session.id_token}}`,
+          "content-type": "application/json"
+        }}
+      }});
+      if (!response.ok) {{
+        window.alert(response.status === 403 ? "管理者権限がありません" : "復旧に失敗しました");
+        return;
+      }}
+      const payload = await response.json();
+      const restored = normalizeItem(payload.item || item);
+      ITEMS = ITEMS.map(candidate => candidate.itemId === item.itemId ? restored : candidate);
       detailDialog.close();
       render();
     }}

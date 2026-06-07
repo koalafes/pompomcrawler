@@ -147,7 +147,13 @@ class PompomCrawlerStack(Stack):
         )
         callback_urls = context_list(
             self.node.try_get_context("callback_urls"),
-            ["http://localhost:8001/docs/index.html", "http://localhost:8001/"],
+            [
+                "http://localhost:8001/docs/index.html",
+                "http://localhost:8001/docs/admin.html",
+                "http://localhost:8001/",
+                "https://main.d1tvp4oub2aan6.amplifyapp.com/",
+                "https://main.d1tvp4oub2aan6.amplifyapp.com/admin.html",
+            ],
         )
         logout_urls = context_list(self.node.try_get_context("logout_urls"), callback_urls)
         user_pool_client = cognito.UserPoolClient(

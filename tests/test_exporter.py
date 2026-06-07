@@ -77,3 +77,31 @@ def test_export_calendar_html_can_use_aws_runtime_without_embedded_items(tmp_pat
     assert "__POMPOM_API_BASE_URL__" in html
     assert "__POMPOM_NEW_LABEL_AFTER__" in html
     assert "https://example.com/event" not in html
+
+
+def test_public_calendar_omits_admin_controls(tmp_path: Path):
+    html_path = export_calendar_html([], tmp_path, aws_runtime=True, filename="index.html")
+    html = html_path.read_text(encoding="utf-8")
+
+    assert "const ADMIN_MODE = false;" in html
+    assert 'id="loginButton"' not in html
+    assert 'id="adminActionButton"' not in html
+    assert "/admin/items" in html
+    assert "ADMIN_MODE ? \"/admin/items\" : \"/items\"" in html
+
+
+def test_admin_calendar_uses_admin_controls_and_redirect(tmp_path: Path, monkeypatch):
+    monkeypatch.setenv("POMPOM_COGNITO_REDIRECT_URI", "https://example.com/")
+    monkeypatch.setenv("POMPOM_COGNITO_LOGOUT_URI", "https://example.com/")
+
+    html_path = export_calendar_html([], tmp_path, aws_runtime=True, filename="admin.html", admin_mode=True)
+    html = html_path.read_text(encoding="utf-8")
+
+    assert "ポムポムプリン予定帳 管理" in html
+    assert "const ADMIN_MODE = true;" in html
+    assert 'id="loginButton"' in html
+    assert 'id="adminActionButton"' in html
+    assert "https://example.com/" in html
+    assert "pompomLoginReturnPath" in html
+    assert "/admin/items" in html
+    assert "/restore" in html

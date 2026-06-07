@@ -7,6 +7,7 @@ frontend:
     build:
       commands:
         - PYTHONPATH=src python3 -m pompomcrawler.cli export-html --output-dir docs --filename index.html --aws-runtime
+        - POMPOM_COGNITO_REDIRECT_URI=https://main.d1tvp4oub2aan6.amplifyapp.com/ POMPOM_COGNITO_LOGOUT_URI=https://main.d1tvp4oub2aan6.amplifyapp.com/ PYTHONPATH=src python3 -m pompomcrawler.cli export-html --output-dir docs --filename admin.html --aws-runtime --admin
   artifacts:
     baseDirectory: docs
     files:

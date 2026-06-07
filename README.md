@@ -4,6 +4,8 @@
 
 公開カレンダー: https://main.d1tvp4oub2aan6.amplifyapp.com/
 
+管理カレンダー: https://main.d1tvp4oub2aan6.amplifyapp.com/admin.html
+
 旧 GitHub Pages 版: https://koalafes.github.io/pompomcrawler/
 
 外部検索 API や SNS API は不要です。OpenAI API キーがある場合は、取得済みページ本文から商品名・日付・場所などを構造化抽出します。取得元ページに `og:image` や本文画像がある場合は画像 URL も候補に保存し、HTML カレンダーの予定欄に表示します。キーがない場合も、固定巡回、確認チェックリスト生成、手動 CSV 取り込み、CSV 出力は動きます。
@@ -69,6 +71,7 @@ AWS 版は `infra/` の CDK スタックで、DynamoDB、API Gateway HTTP API、
 現在のアクセス先:
 
 - 公開カレンダー: https://main.d1tvp4oub2aan6.amplifyapp.com/
+- 管理カレンダー: https://main.d1tvp4oub2aan6.amplifyapp.com/admin.html
 - 公開API: https://pg2isf3a64.execute-api.ap-northeast-1.amazonaws.com/items
 - Cognito Hosted UI: https://pompomcrawler-154052710150-ap-northeast-1.auth.ap-northeast-1.amazoncognito.com
 - AWSリージョン: `ap-northeast-1`
@@ -91,6 +94,8 @@ POMPOM_COGNITO_REDIRECT_URI=https://main.xxxxx.amplifyapp.com/ \
 POMPOM_COGNITO_LOGOUT_URI=https://main.xxxxx.amplifyapp.com/ \
 POMPOM_NEW_LABEL_AFTER=2026-05-31T00:00:00+00:00
 ```
+
+管理ページを生成する場合は `--admin --filename admin.html` を使います。既存 Cognito client の callback/logout URL だけで動かす場合、`POMPOM_COGNITO_REDIRECT_URI` / `POMPOM_COGNITO_LOGOUT_URI` は `https://main.xxxxx.amplifyapp.com/` のままで構いません。ログイン開始元が管理ページなら、公開ページが OAuth callback だけを処理して管理ページへ戻します。公開ページはログインUIや削除操作を表示せず、通常表示では `/items` のみを読みます。管理ページだけが Cognito ログイン後に `/admin/items` と削除・復旧APIを呼びます。
 
 `POMPOM_NEW_LABEL_AFTER` 以降に追加された予定は、追加から24時間だけ「新着」ラベルを表示します。
 
