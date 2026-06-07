@@ -590,6 +590,28 @@ def render_html(
       margin: 0 4px 0 2px;
       vertical-align: 1px;
     }}
+    .new-bell {{
+      width: 22px;
+      height: 22px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex: 0 0 auto;
+      border: 1px solid rgba(229, 72, 77, .18);
+      border-radius: 999px;
+      background: #fff0bf;
+      color: #b3262d;
+      box-shadow: 0 4px 10px rgba(229, 72, 77, .08);
+    }}
+    .new-bell svg {{
+      width: 14px;
+      height: 14px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }}
     .detail-text {{ margin: 0; color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }}
     .source-link {{
       display: inline-block;
@@ -1592,7 +1614,7 @@ def render_html(
       const heading = document.createElement("div");
       heading.className = "mobile-selected-section-title";
       const newItem = items.find(isNewItem);
-      heading.innerHTML = `<span>${{escapeHtml(label)}} ${{items.length}}件</span>${{newItem ? newBadge(newItem) : ""}}`;
+      heading.innerHTML = `<span>${{escapeHtml(label)}} ${{items.length}}件</span>${{newItem ? newBell(newItem) : ""}}`;
       section.append(heading);
       items.forEach(item => section.append(mobileEventButton(item)));
       mobileSelected.append(section);
@@ -1647,7 +1669,7 @@ def render_html(
         <div class="meta">
           <span class="tag">${{escapeHtml(item.kindLabel)}}</span>
           ${{ADMIN_MODE ? `<span class="tag ${{escapeAttr(item.status)}}">${{escapeHtml(item.statusLabel)}}</span>` : ""}}
-          ${{newBadge(item)}}
+          ${{newBell(item)}}
         </div>
         <p class="detail-text">${{escapeHtml(dateSummary(item))}}</p>
         <p class="detail-text">${{escapeHtml(item.sellerOrVenue || "")}}</p>
@@ -1671,6 +1693,9 @@ def render_html(
     }}
     function newBadge(item) {{
       return isNewItem(item) ? `<span class="new-badge" title="新着" aria-label="新着"></span>` : "";
+    }}
+    function newBell(item) {{
+      return isNewItem(item) ? `<span class="new-bell" title="新着" aria-label="新着"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"></path><path d="M10 21h4"></path></svg></span>` : "";
     }}
     function isNewItem(item) {{
       if (!item.createdAt) return false;
