@@ -32,9 +32,10 @@ def test_export_schedule_writes_csv(tmp_path: Path):
     html = html_path.read_text(encoding="utf-8")
     assert "ポムポムプリン予定帳" in html
     assert "https://example.com/event.jpg" in html
-    assert ".range-bar" in html
-    assert "function rangeSegments" in html
-    assert 'item.kind === "event" && isRangeItem(item)' in html
+    assert ".range-bar" not in html
+    assert "function rangeSegments" not in html
+    assert "function itemOccursOnCalendar" in html
+    assert "return item.primaryDate === dayIso" in html
     assert "function itemOccursOn" in html
     assert "開催中の予定" in html
     assert "function appendMobileSelectedSection" in html

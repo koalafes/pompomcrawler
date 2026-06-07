@@ -310,61 +310,6 @@
     .event-pill.event { border-left-color: var(--sky); background: #eaf5ff; }
     .event-pill.campaign { border-left-color: var(--berry); background: #ffeaf0; }
     .event-pill.reservation { border-left-color: var(--leaf); background: #ecf8e9; }
-    .range-bar {
-      height: 24px;
-      min-width: 0;
-      align-self: end;
-      margin: 0 4px calc(8px + (var(--range-lane, 0) * 27px));
-      padding: 0 10px;
-      border: 0;
-      border-left: 5px solid var(--mint);
-      border-radius: 7px;
-      background: var(--mint-soft);
-      color: var(--cocoa);
-      box-shadow: 0 7px 16px rgba(53, 36, 23, .1);
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 7px;
-      overflow: hidden;
-      position: relative;
-      z-index: 3;
-    }
-    .range-bar::before {
-      content: "";
-      width: 7px;
-      height: 7px;
-      flex: 0 0 auto;
-      border-radius: 999px;
-      background: currentColor;
-      opacity: .55;
-    }
-    .range-bar strong {
-      min-width: 0;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      font-size: 12px;
-      letter-spacing: 0;
-    }
-    .range-bar.product { border-left-color: var(--caramel); background: #fff0bf; }
-    .range-bar.event { border-left-color: var(--sky); background: #eaf5ff; }
-    .range-bar.campaign { border-left-color: var(--berry); background: #ffeaf0; }
-    .range-bar.reservation { border-left-color: var(--leaf); background: #ecf8e9; }
-    .range-bar.is-start {
-      border-top-left-radius: 7px;
-      border-bottom-left-radius: 7px;
-    }
-    .range-bar:not(.is-start) {
-      border-left-width: 0;
-      border-top-left-radius: 0;
-      border-bottom-left-radius: 0;
-      padding-left: 8px;
-    }
-    .range-bar:not(.is-end) {
-      border-top-right-radius: 0;
-      border-bottom-right-radius: 0;
-    }
     .more-button {
       width: 100%;
       border: 0;
@@ -515,13 +460,6 @@
       padding: 0 5px;
       font-size: 10px;
       vertical-align: 1px;
-    }
-    .range-bar.is-new::after {
-      content: "新着";
-      margin-left: 8px;
-      color: #b3262d;
-      font-size: 11px;
-      font-weight: 900;
     }
     .detail-text { margin: 0; color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }
     .source-link {
@@ -854,11 +792,6 @@
         grid-template-rows: repeat(6, minmax(122px, auto));
       }
       .day { min-height: 122px; padding: 6px; }
-      .range-bar {
-        height: 22px;
-        margin-bottom: calc(6px + (var(--range-lane, 0) * 24px));
-        padding: 0 8px;
-      }
     }
     @media (max-width: 640px) {
       .topbar-inner { gap: 12px; }
@@ -917,7 +850,7 @@
         <div class="brand">
           <div>
             <h1>ポムポムプリン予定帳</h1>
-            <p id="dataSummary">2026-06-07 12:10 / 直近30日＋未来</p>
+            <p id="dataSummary">2026-06-07 20:11 / 直近30日＋未来</p>
           </div>
         </div>
         <div class="month-controls" aria-label="月移動">
@@ -1367,7 +1300,6 @@
       const month = state.current.getMonth();
       const first = new Date(year, month, 1);
       const start = new Date(year, month, 1 - first.getDay());
-      const visibleEndDate = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 41);
       const today = isoDate(new Date());
       for (let index = 0; index < 42; index += 1) {
         const day = new Date(start.getFullYear(), start.getMonth(), start.getDate() + index);
@@ -1375,7 +1307,6 @@
         const row = Math.floor(index / 7) + 1;
         const column = (index % 7) + 1;
         const dayItems = items.filter(item => itemOccursOnCalendar(item, dayIso));
-        const pointItems = dayItems.filter(item => !isBandItem(item));
         const cell = document.createElement("div");
         cell.className = "day";
         cell.style.gridColumn = String(column);
@@ -1388,11 +1319,11 @@
         cell.append(dayNumber);
         const list = document.createElement("div");
         list.className = "event-list";
-        pointItems.slice(0, 2).forEach(item => list.append(eventButton(item)));
-        if (dayItems.length > pointItems.slice(0, 2).length) {
+        dayItems.slice(0, 2).forEach(item => list.append(eventButton(item)));
+        if (dayItems.length > 2) {
           const more = document.createElement("button");
           more.className = "more-button";
-          more.textContent = `+${dayItems.length - pointItems.slice(0, 2).length}件`;
+          more.textContent = `+${dayItems.length - 2}件`;
           more.addEventListener("click", () => {
             state.selectedDate = dayIso;
             renderAgenda(items);
@@ -1407,7 +1338,6 @@
         });
         grid.append(cell);
       }
-      rangeSegments(items, start, visibleEndDate).forEach(segment => grid.append(rangeButton(segment)));
       const monthLabel = `${year}年${month + 1}月`;
       document.querySelector(".brand h1").textContent = `ポムポムプリン予定帳 / ${monthLabel}`;
     }
@@ -1416,17 +1346,6 @@
       button.className = `event-pill ${item.kind}${isNewItem(item) ? " is-new" : ""}`;
       button.innerHTML = `<strong>${escapeHtml(item.title)}${newBadge(item)}</strong><span>${escapeHtml(item.kindLabel)} / ${escapeHtml(dateSummary(item))}</span>`;
       button.addEventListener("click", () => openDetail(item));
-      return button;
-    }
-    function rangeButton(segment) {
-      const button = document.createElement("button");
-      button.className = `range-bar ${segment.item.kind}${segment.isStart ? " is-start" : ""}${segment.isEnd ? " is-end" : ""}${isNewItem(segment.item) ? " is-new" : ""}`;
-      button.style.gridColumn = `${segment.column} / span ${segment.span}`;
-      button.style.gridRow = String(segment.row);
-      button.style.setProperty("--range-lane", String(segment.lane));
-      button.title = `${segment.item.title} / ${dateSummary(segment.item)}`;
-      button.innerHTML = `<strong>${escapeHtml(segment.item.title)}</strong>`;
-      button.addEventListener("click", () => openDetail(segment.item));
       return button;
     }
     function renderAgenda(items) {
@@ -1695,12 +1614,8 @@
       if (!item.startDate || !item.endDate) return false;
       return item.startDate < item.endDate;
     }
-    function isBandItem(item) {
-      return item.kind === "event" && isRangeItem(item);
-    }
     function itemOccursOnCalendar(item, dayIso) {
       if (!dayIso) return false;
-      if (isBandItem(item)) return item.startDate <= dayIso && dayIso <= item.endDate;
       return item.primaryDate === dayIso;
     }
     function itemOccursOn(item, dayIso) {
@@ -1708,68 +1623,6 @@
       if (isRangeItem(item)) return item.startDate <= dayIso && dayIso <= item.endDate;
       return item.primaryDate === dayIso;
     }
-    function datesForItem(item) {
-      if (!isRangeItem(item)) return item.primaryDate ? [item.primaryDate] : [];
-      const dates = [];
-      let cursor = parseLocalDate(item.startDate);
-      const end = parseLocalDate(item.endDate);
-      while (cursor <= end && dates.length < 370) {
-        dates.push(isoDate(cursor));
-        cursor = addDays(cursor, 1);
-      }
-      return dates;
-    }
-    function rangeSegments(items, visibleStart, visibleEnd) {
-      const segments = [];
-      const lanesByRow = Array.from({ length: 6 }, () => []);
-      const rangeItems = items
-        .filter(isBandItem)
-        .sort((a, b) => a.startDate.localeCompare(b.startDate) || b.endDate.localeCompare(a.endDate));
-      rangeItems.forEach(item => {
-        let cursor = maxDate(parseLocalDate(item.startDate), visibleStart);
-        const end = minDate(parseLocalDate(item.endDate), visibleEnd);
-        if (cursor > end) return;
-        while (cursor <= end) {
-          const offset = daysBetween(visibleStart, cursor);
-          const row = Math.floor(offset / 7) + 1;
-          const column = (offset % 7) + 1;
-          const weekEnd = addDays(visibleStart, row * 7 - 1);
-          const segmentEnd = minDate(end, weekEnd);
-          const span = daysBetween(cursor, segmentEnd) + 1;
-          const lane = allocateLane(lanesByRow[row - 1], column, column + span - 1);
-          segments.push({
-            item,
-            row,
-            column,
-            span,
-            lane,
-            isStart: isoDate(cursor) === item.startDate,
-            isEnd: isoDate(segmentEnd) === item.endDate
-          });
-          cursor = addDays(segmentEnd, 1);
-        }
-      });
-      return segments;
-    }
-    function allocateLane(lanes, startColumn, endColumn) {
-      const lane = lanes.findIndex(lastEndColumn => lastEndColumn < startColumn);
-      if (lane >= 0) {
-        lanes[lane] = endColumn;
-        return lane;
-      }
-      lanes.push(endColumn);
-      return lanes.length - 1;
-    }
-    function addDays(date, days) {
-      return new Date(date.getFullYear(), date.getMonth(), date.getDate() + days);
-    }
-    function daysBetween(start, end) {
-      const startUtc = Date.UTC(start.getFullYear(), start.getMonth(), start.getDate());
-      const endUtc = Date.UTC(end.getFullYear(), end.getMonth(), end.getDate());
-      return Math.round((endUtc - startUtc) / 86400000);
-    }
-    function minDate(a, b) { return a <= b ? a : b; }
-    function maxDate(a, b) { return a >= b ? a : b; }
     function sourceLinks(value) {
       if (!value) return "";
       return value.split(" | ").map(url => `<a class="source-link" href="${escapeAttr(url)}" target="_blank" rel="noreferrer">ソースを開く</a>`).join("<br>");
