@@ -428,11 +428,12 @@ def render_html(
       display: flex;
       align-items: center;
       gap: 7px;
-      overflow: hidden;
+      overflow: visible;
       font-size: 12px;
       letter-spacing: 0;
     }}
     .event-title {{
+      flex: 1 1 auto;
       min-width: 0;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -586,6 +587,7 @@ def render_html(
       border-radius: 999px;
       background: #e5484d;
       box-shadow: 0 0 0 3px rgba(229, 72, 77, .14);
+      margin: 0 4px 0 2px;
       vertical-align: 1px;
     }}
     .detail-text {{ margin: 0; color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }}
