@@ -572,6 +572,7 @@ def render_html(
     .tag.review {{ background: #ffe7a1; }}
     .tag.confirmed {{ background: #dff4e7; color: #2f7652; }}
     .tag.excluded {{ background: #eee8dc; color: #8d7b68; }}
+    .tag.new {{ background: #ffe7a1; color: #b3262d; }}
     .admin-note {{
       margin-top: 8px;
       color: var(--muted);
@@ -1648,7 +1649,7 @@ def render_html(
           <h3>${{escapeHtml(item.title)}}</h3>
           <div class="meta">
             <span class="tag">${{escapeHtml(item.kindLabel)}}</span>
-            ${{newBadge(item)}}
+            ${{newLabel(item)}}
           </div>
           <p class="detail-text">${{escapeHtml(dateSummary(item))}}</p>
           <p class="detail-text">${{escapeHtml(item.sellerOrVenue || item.sourceName || "")}}</p>
@@ -1696,6 +1697,9 @@ def render_html(
     }}
     function newBell(item) {{
       return isNewItem(item) ? `<span class="new-bell" title="新着" aria-label="新着"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"></path><path d="M10 21h4"></path></svg></span>` : "";
+    }}
+    function newLabel(item) {{
+      return isNewItem(item) ? `<span class="tag new">新着</span>` : "";
     }}
     function isNewItem(item) {{
       if (!item.createdAt) return false;

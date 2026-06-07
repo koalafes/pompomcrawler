@@ -42,6 +42,8 @@ def test_export_schedule_writes_csv(tmp_path: Path):
     assert "const newItem = items.find(isNewItem)" in html
     assert "function newBell" in html
     assert "newItem ? newBell(newItem)" in html
+    assert "function newLabel" in html
+    assert "tag new" in html
     assert "mobile-selected-section-title" in html
     assert "function upcomingAgendaItems" in html
     assert "function nextKnownDate" in html
