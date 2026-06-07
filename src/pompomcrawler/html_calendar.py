@@ -1591,7 +1591,8 @@ def render_html(
       section.className = "mobile-selected-section";
       const heading = document.createElement("div");
       heading.className = "mobile-selected-section-title";
-      heading.textContent = `${{label}} ${{items.length}}件`;
+      const newItem = items.find(isNewItem);
+      heading.innerHTML = `<span>${{escapeHtml(label)}} ${{items.length}}件</span>${{newItem ? newBadge(newItem) : ""}}`;
       section.append(heading);
       items.forEach(item => section.append(mobileEventButton(item)));
       mobileSelected.append(section);

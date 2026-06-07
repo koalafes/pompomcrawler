@@ -847,7 +847,7 @@
         <div class="brand">
           <div>
             <h1>ポムポムプリン予定帳</h1>
-            <p id="dataSummary">2026-06-07 20:44 / 直近30日＋未来</p>
+            <p id="dataSummary">2026-06-07 20:51 / 直近30日＋未来</p>
           </div>
         </div>
         <div class="month-controls" aria-label="月移動">
@@ -1457,7 +1457,8 @@
       section.className = "mobile-selected-section";
       const heading = document.createElement("div");
       heading.className = "mobile-selected-section-title";
-      heading.textContent = `${label} ${items.length}件`;
+      const newItem = items.find(isNewItem);
+      heading.innerHTML = `<span>${escapeHtml(label)} ${items.length}件</span>${newItem ? newBadge(newItem) : ""}`;
       section.append(heading);
       items.forEach(item => section.append(mobileEventButton(item)));
       mobileSelected.append(section);
