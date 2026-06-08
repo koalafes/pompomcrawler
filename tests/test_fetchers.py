@@ -42,6 +42,13 @@ def test_discovered_same_page_anchor_is_skipped():
     )
 
 
+def test_discovered_character_profile_page_is_skipped():
+    assert should_skip_discovered_link(
+        "https://www.sanrio.co.jp/news/",
+        "https://www.sanrio.co.jp/characters/pompompurin/?id=profile",
+    )
+
+
 def test_discovered_anniversary_sku_pages_are_skipped():
     assert should_skip_discovered_link(
         "https://www.puroland.jp/goods-feature/pompompurin30th/",

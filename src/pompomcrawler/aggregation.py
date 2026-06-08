@@ -6,6 +6,7 @@ from urllib.parse import urlparse
 
 from .models import ScheduleItem
 from .storage import split_source_urls
+from .url_policy import canonical_url as policy_canonical_url
 
 
 @dataclass(frozen=True)
@@ -80,10 +81,7 @@ def normalize_for_group(value: str) -> str:
 
 
 def canonical_url(url: str) -> str:
-    parsed = urlparse(url.strip())
-    if not parsed.scheme or not parsed.netloc:
-        return url.strip()
-    return parsed._replace(fragment="", query="").geturl().rstrip("/")
+    return policy_canonical_url(url)
 
 
 def canonical_source_urls(source_url: str) -> set[str]:

@@ -119,6 +119,22 @@ def test_public_items_aggregate_existing_collection_records():
     assert public_items[0]["item_id"]
 
 
+def test_public_items_include_only_public_source_url():
+    store = memory_store()
+    item = schedule_item(
+        url=(
+            "https://www.sanrio.co.jp/characters/pompompurin/?id=profile"
+            " | https://www.sanrio.co.jp/news/spots/pn-pop-up-store-loft-20260528/"
+        )
+    )
+
+    store.put_schedule_items([item])
+    public_items = store.public_items()
+
+    assert public_items[0]["source_url"].startswith("https://www.sanrio.co.jp/characters/pompompurin/")
+    assert public_items[0]["public_source_url"] == "https://www.sanrio.co.jp/news/spots/pn-pop-up-store-loft-20260528/"
+
+
 def test_public_items_keep_unique_ids_for_overlapping_collection_sources():
     store = memory_store()
     main = schedule_item(
@@ -156,7 +172,26 @@ def test_select_documents_for_extraction_prioritizes_direct_detail_pages():
 
     assert [doc.url for doc in selected] == [
         "https://www.sanrio.co.jp/news/spots/pn-biwako-fireworks-20260601/",
-        "https://www.sanrio.co.jp/news/",
+        "https://example.com/discovered",
+    ]
+
+
+def test_select_documents_for_extraction_skips_character_profile_page():
+    docs = [
+        raw_doc("https://www.sanrio.co.jp/characters/pompompurin/?id=news"),
+        raw_doc("https://www.sanrio.co.jp/news/spots/pn-pop-up-store-loft-20260528/"),
+    ]
+
+    selected = aws_handlers.select_documents_for_extraction(
+        docs,
+        direct_url_ranks={"https://www.sanrio.co.jp/characters/pompompurin/?id=news": 0},
+        successful_urls=set(),
+        failed_urls=set(),
+        max_docs=10,
+    )
+
+    assert [doc.url for doc in selected] == [
+        "https://www.sanrio.co.jp/news/spots/pn-pop-up-store-loft-20260528/"
     ]
 
 

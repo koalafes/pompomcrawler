@@ -9,6 +9,7 @@ from .aggregation import display_group_key, merge_related_items
 from .aws_keys import block_keys_for_item, schedule_item_id
 from .models import RawDocument, SCHEDULE_COLUMNS, ScheduleItem
 from .storage import split_source_urls
+from .url_policy import choose_public_source_url
 
 
 METADATA_COLUMNS = {
@@ -66,6 +67,7 @@ def item_from_record(record: dict[str, Any]) -> ScheduleItem:
 def public_payload(record: dict[str, Any]) -> dict[str, Any]:
     item = item_from_record(record)
     payload = item.to_dict()
+    payload["public_source_url"] = choose_public_source_url(item.source_url)
     payload["item_id"] = record.get("item_id", schedule_item_id(item))
     payload["created_at"] = record.get("created_at", "")
     payload["updated_at"] = record.get("updated_at", "")
@@ -80,6 +82,7 @@ def public_payloads(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
     for item in merged_items:
         representative = representative_record(item, records)
         payload = item.to_dict()
+        payload["public_source_url"] = choose_public_source_url(item.source_url)
         candidate_id = representative.get("item_id", schedule_item_id(item)) if representative else schedule_item_id(item)
         if candidate_id in used_ids:
             candidate_id = schedule_item_id(item)

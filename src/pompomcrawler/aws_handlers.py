@@ -3,14 +3,13 @@ from __future__ import annotations
 import json
 import os
 from typing import Any
-from urllib.parse import urlparse
 
-from .aggregation import canonical_url
 from .config import DEFAULT_CONFIG, load_config
 from .dynamodb_store import DynamoScheduleStore
 from .extract import extract_items_from_documents
 from .fetchers import fetch_page_source, fetch_rss_source
 from .models import RawDocument
+from .url_policy import canonical_url, is_broad_schedule_source_url
 
 
 DEFAULT_MAX_EXTRACT_DOCS_PER_RUN = 8
@@ -104,6 +103,7 @@ def select_documents_for_extraction(
         for doc in docs
         if canonical_url(doc.url) not in successful or canonical_url(doc.url) in failed
     ]
+    candidates = [doc for doc in candidates if not is_broad_listing_url(doc.url)]
     candidates.sort(key=lambda doc: extraction_priority(doc, direct_url_ranks))
     return candidates[:max_docs] if max_docs > 0 else candidates
 
@@ -120,18 +120,7 @@ def extraction_priority(doc: RawDocument, direct_url_ranks: dict[str, int]) -> t
 
 
 def is_broad_listing_url(url: str) -> bool:
-    parsed = urlparse(url)
-    path = parsed.path.rstrip("/")
-    return path in {
-        "",
-        "/",
-        "/news",
-        "/news/goods",
-        "/news/spots",
-        "/news/campaign",
-        "/news/shop",
-        "/characters/pompompurin",
-    }
+    return is_broad_schedule_source_url(url)
 
 
 def response(status_code: int, body: dict[str, Any]) -> dict[str, Any]:

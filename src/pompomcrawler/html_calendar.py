@@ -9,6 +9,7 @@ from pathlib import Path
 from .extract import merge_duplicates
 from .models import ScheduleItem
 from .schedule_window import DEFAULT_PAST_DAYS, filter_schedule_window, parse_iso_date, primary_date
+from .url_policy import choose_public_source_url
 
 
 KIND_LABELS = {
@@ -71,6 +72,7 @@ def calendar_item(item: ScheduleItem, index: int) -> dict:
         "primaryDate": primary_date(item),
         "sellerOrVenue": item.seller_or_venue,
         "sourceUrl": item.source_url,
+        "publicSourceUrl": choose_public_source_url(item.source_url),
         "imageUrl": item.image_url,
         "sourceName": item.source_name,
         "confidence": round(item.confidence, 2),
@@ -1347,6 +1349,7 @@ def render_html(
         primaryDate: item.primaryDate || item.primary_date || firstPresentDate(releaseDate, startDate, reservationStart, endDate),
         sellerOrVenue: item.sellerOrVenue || item.seller_or_venue || "",
         sourceUrl: item.sourceUrl || item.source_url || "",
+        publicSourceUrl: item.publicSourceUrl || item.public_source_url || choosePublicSourceUrl(item.sourceUrl || item.source_url || ""),
         imageUrl: item.imageUrl || item.image_url || "",
         sourceName: item.sourceName || item.source_name || "",
         confidence: Number(item.confidence || 0),
@@ -1731,7 +1734,7 @@ def render_html(
           ${{publicDetailRows(item).map(([label, value]) => detailRowMarkup(label, value)).join("")}}
         </div>
         ${{publicDescription(item) ? `<p class="detail-description">${{escapeHtml(publicDescription(item))}}</p>` : ""}}
-        ${{includeSource === false ? "" : primarySourceLink(item.sourceUrl)}}
+        ${{includeSource === false ? "" : primarySourceLink(item.publicSourceUrl || item.sourceUrl)}}
       `;
     }}
     function adminDetailMarkup(item) {{
@@ -1879,9 +1882,34 @@ def render_html(
       return item.primaryDate === dayIso;
     }}
     function primarySourceLink(value) {{
-      const url = sourceUrls(value)[0];
+      const url = choosePublicSourceUrl(value);
       if (!url) return "";
       return `<div class="source-actions"><a class="primary-source-link" href="${{escapeAttr(url)}}" target="_blank" rel="noreferrer">公式ページを開く</a></div>`;
+    }}
+    function choosePublicSourceUrl(value) {{
+      return sourceUrls(value).find(url => isPublicDetailUrl(url)) || "";
+    }}
+    function isPublicDetailUrl(value) {{
+      let parsed;
+      try {{
+        parsed = new URL(value, window.location.href);
+      }} catch {{
+        return false;
+      }}
+      if (!["http:", "https:"].includes(parsed.protocol)) return false;
+      const host = parsed.hostname.toLowerCase();
+      const path = parsed.pathname.replace(/[/]+$/, "");
+      if (host === "www.sanrio.co.jp") {{
+        if (["", "/", "/news", "/news/goods", "/news/spots", "/news/campaign", "/news/shop", "/characters/pompompurin"].includes(path || "/")) return false;
+        return /^\\/news\\/(goods|spots|campaign|shop)\\/[^/]+$/.test(path);
+      }}
+      if (host === "www.puroland.jp") {{
+        if (path === "" || path === "/") return false;
+        return /^\\/(event-campaign|parade-show|goods-feature|food-feature|goods|food)\\/[^/]+$/.test(path);
+      }}
+      if (host === "prtimes.jp") return path.startsWith("/main/html/rd/p/");
+      if (host === "www.atpress.ne.jp") return /^\\/news\\/\\d+$/.test(path);
+      return true;
     }}
     function sourceLinks(value) {{
       return sourceUrls(value).map((url, index) => `<a class="source-link" href="${{escapeAttr(url)}}" target="_blank" rel="noreferrer">ソースを開く${{index ? ` ${{index + 1}}` : ""}}</a>`).join("<br>");

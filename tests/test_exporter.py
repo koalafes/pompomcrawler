@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from pompomcrawler.exporter import export_schedule
-from pompomcrawler.html_calendar import export_calendar_html
+from pompomcrawler.html_calendar import calendar_item, export_calendar_html
 from pompomcrawler.models import ScheduleItem
 
 
@@ -59,6 +59,8 @@ def test_export_schedule_writes_csv(tmp_path: Path):
     assert "function adminDetailMarkup" in html
     assert "function publicDescription" in html
     assert "function primarySourceLink" in html
+    assert "function choosePublicSourceUrl" in html
+    assert "function isPublicDetailUrl" in html
     assert "公式ページを開く" in html
     assert "管理メモ" in html
 
@@ -116,3 +118,29 @@ def test_admin_calendar_uses_admin_controls_and_redirect(tmp_path: Path, monkeyp
     assert "pompomLoginReturnPath" in html
     assert "/admin/items" in html
     assert "/restore" in html
+
+
+def test_calendar_item_uses_public_source_url_for_public_detail_link():
+    item = ScheduleItem(
+        title="ポムポムプリン イベント",
+        kind="event",
+        start_date="2026-06-01",
+        end_date="2026-06-30",
+        release_date="",
+        reservation_start="",
+        seller_or_venue="東京",
+        source_url=(
+            "https://www.sanrio.co.jp/characters/pompompurin/?id=profile"
+            " | https://www.sanrio.co.jp/news/spots/pn-pop-up-store-loft-20260528/"
+        ),
+        source_name="manual",
+        confidence=0.9,
+        status="needs_review",
+        review_reason="sample",
+        notes="",
+    )
+
+    payload = calendar_item(item, 1)
+
+    assert payload["sourceUrl"].startswith("https://www.sanrio.co.jp/characters/pompompurin/")
+    assert payload["publicSourceUrl"] == "https://www.sanrio.co.jp/news/spots/pn-pop-up-store-loft-20260528/"

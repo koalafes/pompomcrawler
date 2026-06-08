@@ -8,8 +8,8 @@ from typing import Iterable
 from urllib.parse import urljoin, urlparse
 from urllib.request import Request, urlopen
 
-from .aggregation import canonical_url
 from .models import RawDocument, now_iso
+from .url_policy import canonical_url, is_broad_schedule_source_url
 
 
 USER_AGENT = "pompomcrawler/0.1 (+local research tool)"
@@ -150,6 +150,8 @@ def should_skip_discovered_link(source_url: str, target_url: str) -> bool:
         return False
     source_path = source.path.rstrip("/")
     target_path = target.path.rstrip("/")
+    if is_broad_schedule_source_url(target.geturl()):
+        return True
     if target_path.startswith(("/goods/pompompurin30th_", "/food/food_pompompurin30th_")):
         return True
     feature_match = re.match(r"^/(?P<section>goods|food)-feature/(?P<slug>[^/]+)$", source_path)
