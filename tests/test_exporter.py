@@ -39,9 +39,8 @@ def test_export_schedule_writes_csv(tmp_path: Path):
     assert "function itemOccursOn" in html
     assert "開催中の予定" in html
     assert "function appendMobileSelectedSection" in html
-    assert "const newItem = items.find(isNewItem)" in html
     assert "function newLabel" in html
-    assert "newItem ? newLabel(newItem)" in html
+    assert "mobile-event-meta" in html
     assert "tag new" in html
     assert "mobile-selected-section-title" in html
     assert "function upcomingAgendaItems" in html

@@ -873,9 +873,14 @@ def render_html(
       line-height: 1.35;
       letter-spacing: 0;
     }}
-    .mobile-event-content > span {{
-      display: block;
+    .mobile-event-meta {{
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 6px;
       margin-top: 5px;
+    }}
+    .mobile-event-meta > span:not(.tag) {{
       color: var(--muted);
       font-size: 12px;
       font-weight: 800;
@@ -1592,8 +1597,7 @@ def render_html(
       section.className = "mobile-selected-section";
       const heading = document.createElement("div");
       heading.className = "mobile-selected-section-title";
-      const newItem = items.find(isNewItem);
-      heading.innerHTML = `<span>${{escapeHtml(label)}} ${{items.length}}件</span>${{newItem ? newLabel(newItem) : ""}}`;
+      heading.textContent = `${{label}} ${{items.length}}件`;
       section.append(heading);
       items.forEach(item => section.append(mobileEventButton(item)));
       mobileSelected.append(section);
@@ -1605,8 +1609,8 @@ def render_html(
       button.innerHTML = `
         ${{imageMarkup(item, "event-image mobile-thumb")}}
         <div class="mobile-event-content">
-          <strong><span class="event-title">${{escapeHtml(item.title)}}</span>${{newBadge(item)}}</strong>
-          <span>${{escapeHtml(dateSummary(item))}} / ${{escapeHtml(item.kindLabel)}}</span>
+          <strong><span class="event-title">${{escapeHtml(item.title)}}</span></strong>
+          <div class="mobile-event-meta"><span>${{escapeHtml(dateSummary(item))}} / ${{escapeHtml(item.kindLabel)}}</span>${{newLabel(item)}}</div>
         </div>
       `;
       button.addEventListener("click", () => openDetail(item));
