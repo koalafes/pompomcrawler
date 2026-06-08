@@ -55,6 +55,12 @@ def test_export_schedule_writes_csv(tmp_path: Path):
     assert "skeleton-shimmer" in html
     assert "予定を読み込み中" in html
     assert "function renderLoadError" in html
+    assert "function publicDetailMarkup" in html
+    assert "function adminDetailMarkup" in html
+    assert "function publicDescription" in html
+    assert "function primarySourceLink" in html
+    assert "公式ページを開く" in html
+    assert "管理メモ" in html
 
 
 def test_export_calendar_html_can_use_aws_runtime_without_embedded_items(tmp_path: Path):

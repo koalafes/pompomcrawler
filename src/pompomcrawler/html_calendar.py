@@ -592,6 +592,58 @@ def render_html(
       vertical-align: 1px;
     }}
     .detail-text {{ margin: 0; color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }}
+    .detail-panel {{
+      display: grid;
+      gap: 10px;
+      margin-top: 14px;
+      padding: 14px;
+      border-radius: 8px;
+      background: #fffaf0;
+      border: 1px solid rgba(122, 75, 39, .12);
+    }}
+    .detail-row {{
+      display: grid;
+      grid-template-columns: 92px minmax(0, 1fr);
+      gap: 12px;
+      align-items: baseline;
+    }}
+    .detail-label {{
+      color: var(--caramel);
+      font-size: 12px;
+      font-weight: 900;
+    }}
+    .detail-value {{
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 800;
+      line-height: 1.55;
+      overflow-wrap: anywhere;
+    }}
+    .detail-description {{
+      margin: 16px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 700;
+      line-height: 1.75;
+      overflow-wrap: anywhere;
+    }}
+    .source-actions {{
+      margin-top: 18px;
+    }}
+    .primary-source-link {{
+      min-height: 42px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 16px;
+      border-radius: 8px;
+      background: #167c70;
+      color: #fffdf8;
+      font-size: 14px;
+      font-weight: 900;
+      text-decoration: none;
+      box-shadow: 0 10px 18px rgba(22, 124, 112, .16);
+    }}
     .source-link {{
       display: inline-block;
       margin-top: 10px;
@@ -599,6 +651,24 @@ def render_html(
       font-weight: 800;
       font-size: 13px;
       overflow-wrap: anywhere;
+    }}
+    .admin-detail-panel {{
+      margin-top: 18px;
+      padding: 12px 14px;
+      border-radius: 8px;
+      border: 1px solid rgba(122, 75, 39, .14);
+      background: rgba(255, 248, 230, .72);
+    }}
+    .admin-detail-panel summary {{
+      cursor: pointer;
+      color: var(--cocoa);
+      font-size: 13px;
+      font-weight: 900;
+    }}
+    .admin-detail-panel .detail-description {{
+      margin-top: 12px;
+      font-size: 13px;
+      font-weight: 700;
     }}
     .empty {{
       padding: 28px 14px;
@@ -1646,21 +1716,66 @@ def render_html(
         adminActionButton.hidden = !(ADMIN_MODE && apiBaseUrl() && authSession() && item.itemId);
         adminActionButton.textContent = item.status === "excluded" ? "復旧" : "削除";
       }}
-      modalBody.innerHTML = `
+      modalBody.innerHTML = ADMIN_MODE ? adminDetailMarkup(item) : publicDetailMarkup(item);
+      detailDialog.showModal();
+    }}
+    function publicDetailMarkup(item, includeSource) {{
+      return `
         ${{imageMarkup(item, "event-image modal-image")}}
         <h2>${{escapeHtml(item.title)}}</h2>
         <div class="meta">
           <span class="tag">${{escapeHtml(item.kindLabel)}}</span>
-          ${{ADMIN_MODE ? `<span class="tag ${{escapeAttr(item.status)}}">${{escapeHtml(item.statusLabel)}}</span>` : ""}}
           ${{newLabel(item)}}
         </div>
-        <p class="detail-text">${{escapeHtml(dateSummary(item))}}</p>
-        <p class="detail-text">${{escapeHtml(item.sellerOrVenue || "")}}</p>
-        <p class="detail-text">${{escapeHtml(item.notes || "")}}</p>
-        ${{adminDetailNote(item)}}
-        ${{sourceLinks(item.sourceUrl)}}
+        <div class="detail-panel">
+          ${{publicDetailRows(item).map(([label, value]) => detailRowMarkup(label, value)).join("")}}
+        </div>
+        ${{publicDescription(item) ? `<p class="detail-description">${{escapeHtml(publicDescription(item))}}</p>` : ""}}
+        ${{includeSource === false ? "" : primarySourceLink(item.sourceUrl)}}
       `;
-      detailDialog.showModal();
+    }}
+    function adminDetailMarkup(item) {{
+      return `
+        ${{publicDetailMarkup(item, false)}}
+        <div class="meta">
+          <span class="tag ${{escapeAttr(item.status)}}">${{escapeHtml(item.statusLabel)}}</span>
+        </div>
+        <details class="admin-detail-panel" open>
+          <summary>管理メモ</summary>
+          ${{item.notes ? `<p class="detail-description">${{escapeHtml(item.notes)}}</p>` : ""}}
+          ${{adminDetailNote(item)}}
+          ${{sourceLinks(item.sourceUrl)}}
+        </details>
+      `;
+    }}
+    function publicDetailRows(item) {{
+      const rows = [];
+      if (item.releaseDate) rows.push(["発売日", item.releaseDate]);
+      if (item.startDate || item.endDate) rows.push(["期間", `${{item.startDate || "未定"}} - ${{item.endDate || "未定"}}`]);
+      if (item.reservationStart) rows.push(["予約開始", item.reservationStart]);
+      const placeOrSeller = item.sellerOrVenue || item.sourceName || "";
+      if (placeOrSeller) {{
+        rows.push([item.kind === "product" ? "販売・場所" : "場所・販売", placeOrSeller]);
+      }}
+      if (!rows.length) rows.push(["日程", "日付未確定"]);
+      return rows;
+    }}
+    function detailRowMarkup(label, value) {{
+      return `
+        <div class="detail-row">
+          <span class="detail-label">${{escapeHtml(label)}}</span>
+          <span class="detail-value">${{escapeHtml(value)}}</span>
+        </div>
+      `;
+    }}
+    function publicDescription(item) {{
+      const value = String(item.notes || "").replace(/\\s+/g, " ").trim();
+      if (!value) return "";
+      const internalMarkers = ["関連候補", "Discovered from", "http://", "https://", "confidence", "review", "確認メモ"];
+      if (internalMarkers.some(marker => value.includes(marker))) return "";
+      if (value.split(" / ").length > 3) return "";
+      if (value.length > 180) return "";
+      return value;
     }}
     function adminDetailNote(item) {{
       if (!ADMIN_MODE) return "";
@@ -1763,9 +1878,28 @@ def render_html(
       if (isRangeItem(item)) return item.startDate <= dayIso && dayIso <= item.endDate;
       return item.primaryDate === dayIso;
     }}
+    function primarySourceLink(value) {{
+      const url = sourceUrls(value)[0];
+      if (!url) return "";
+      return `<div class="source-actions"><a class="primary-source-link" href="${{escapeAttr(url)}}" target="_blank" rel="noreferrer">公式ページを開く</a></div>`;
+    }}
     function sourceLinks(value) {{
-      if (!value) return "";
-      return value.split(" | ").map(url => `<a class="source-link" href="${{escapeAttr(url)}}" target="_blank" rel="noreferrer">ソースを開く</a>`).join("<br>");
+      return sourceUrls(value).map((url, index) => `<a class="source-link" href="${{escapeAttr(url)}}" target="_blank" rel="noreferrer">ソースを開く${{index ? ` ${{index + 1}}` : ""}}</a>`).join("<br>");
+    }}
+    function sourceUrls(value) {{
+      if (!value) return [];
+      const seen = new Set();
+      return String(value).split(" | ").map(url => url.trim()).filter(url => {{
+        if (!url || seen.has(url)) return false;
+        try {{
+          const parsed = new URL(url, window.location.href);
+          if (!["http:", "https:"].includes(parsed.protocol)) return false;
+          seen.add(url);
+          return true;
+        }} catch {{
+          return false;
+        }}
+      }});
     }}
     function imageMarkup(item, className) {{
       const imageUrl = safeImageUrl(item.imageUrl);
